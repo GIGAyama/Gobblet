@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <title>ゴブレット</title>
+  
+  <!-- 以前のアプリと共通の、丸みのあるフォントをGoogle Fontsから読み込みます -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* ================================================================ */
+    /* 1. 基本スタイルとカラーパレット */
+    /* ================================================================ */
+
+    :root {
+      --font-family: 'M PLUS Rounded 1c', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+      --bg-color: #f0e7d8;
+      --container-bg: #fffaf0;
+      --text-color: #5d4037;
+      --shadow-color: rgba(0, 0, 0, 0.15);
+      --board-bg: #a1887f;
+      --cell-bg: #d7ccc8;
+      --player1-primary: #ff8a65;
+      --player1-secondary: #ffccbc;
+      --player2-primary: #4fc3f7;
+      --player2-secondary: #b3e5fc;
+      --btn-bg: #4a90e2;
+    }
+
+    body {
+      font-family: var(--font-family);
+      background-color: var(--bg-color);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      color: var(--text-color);
+      box-sizing: border-box;
+      overflow: hidden; /* モーダル表示時に背景がスクロールしないように */
+    }
+
+    #game-container {
+      background-color: var(--container-bg);
+      padding: 25px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px var(--shadow-color);
+      text-align: center;
+      width: 100%;
+      max-width: 980px;
+      transition: transform 0.5s ease, filter 0.5s ease, opacity 0.5s ease;
+    }
+
+    .title {
+      font-size: 2.5em;
+      font-weight: 700;
+      margin: 0 0 25px;
+    }
+
+    .main-game-area {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 25px;
+      flex-wrap: nowrap;
+    }
+
+    /* ================================================================ */
+    /* 2. プレイヤーエリアのスタイル */
+    /* ================================================================ */
+    .player-area {
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+      width: 280px;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,0.5);
+      transition: transform 0.3s ease;
+    }
+
+    #player1-area { background: linear-gradient(135deg, var(--player1-primary), #ffa726); }
+    #player2-area { background: linear-gradient(135deg, var(--player2-primary), #29b6f6); }
+
+    .player-area h3 {
+      font-size: 1.3em;
+      font-weight: 700;
+      margin-top: 0;
+      margin-bottom: 15px;
+      color: white;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    }
+    
+    .player-hand {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+      min-height: 110px;
+      padding: 10px 0;
+    }
+    .player-hand .piece {
+      position: relative; 
+    }
+    .player-hand .piece.selected {
+      transform: scale(1.1) translateY(-5px);
+    }
+
+    /* ================================================================ */
+    /* 3. ゲーム盤とマスのスタイル */
+    /* ================================================================ */
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 8px;
+      background: linear-gradient(145deg, #bcaaa4, var(--board-bg));
+      padding: 12px;
+      border-radius: 12px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.1);
+      width: 320px;
+      height: 320px;
+      flex-shrink: 0;
+    }
+    .cell {
+      background: linear-gradient(145deg, #f5f5f5, var(--cell-bg));
+      border: 1px solid #a1887f;
+      border-radius: 6px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+    .cell:hover {
+      background: linear-gradient(145deg, #ffffff, #e0e0e0);
+      transform: scale(1.02);
+    }
+
+    /* ================================================================ */
+    /* 4. 駒とアニメーションのスタイル */
+    /* ================================================================ */
+    .piece {
+      position: absolute;
+      box-sizing: border-box;
+      cursor: default;
+      transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55), filter 0.3s ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .piece.selectable { cursor: grab !important; }
+    .piece.selectable:hover {
+      animation: pulse 0.8s infinite ease-in-out;
+      filter: brightness(1.15);
+    }
+    .piece svg {
+      display: block;
+      filter: drop-shadow(3px 3px 3px rgba(0,0,0,0.4));
+      transition: filter 0.3s ease;
+    }
+    .piece.selectable:hover svg {
+      filter: drop-shadow(4px 4px 4px rgba(0,0,0,0.5));
+    }
+    .piece.selected {
+      animation: wobble 0.5s ease-in-out;
+      filter: brightness(1.2) drop-shadow(0 0 10px yellow);
+      cursor: grabbing !important;
+      z-index: 10;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    @keyframes wobble {
+      0%, 100% { transform: rotate(0deg) scale(1.1); }
+      25% { transform: rotate(-3deg) scale(1.1); }
+      50% { transform: rotate(3deg) scale(1.1); }
+      75% { transform: rotate(-2deg) scale(1.1); }
+      100% { transform: rotate(0deg) scale(1.1); }
+    }
+
+    /* ================================================================ */
+    /* 5. ゲーム情報とボタンのスタイル */
+    /* ================================================================ */
+    #game-info-area {
+      margin-top: 25px;
+      padding: 15px 20px;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(5px);
+      border-radius: 12px;
+      box-shadow: 0 4px 8px var(--shadow-color);
+      text-align: center;
+      min-width: 320px;
+    }
+    #turn-indicator {
+      font-weight: 700;
+      font-size: 1.2em;
+      padding: 8px 12px;
+      border-radius: 8px;
+      transition: all 0.5s ease;
+    }
+    #turn-indicator.player1-turn { background-color: var(--player1-secondary); }
+    #turn-indicator.player2-turn { background-color: var(--player2-secondary); }
+
+    #message-area {
+      margin-top: 12px;
+      font-weight: 700;
+      min-height: 24px;
+      font-size: 1.05em;
+      transition: color 0.3s ease;
+    }
+    #message-area.error { color: #d32f2f !important; }
+    #message-area.success { color: #388e3c !important; }
+    
+    .btn {
+      font-family: var(--font-family);
+      background-color: var(--btn-bg);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 1em;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    }
+    .btn:hover {
+      background-color: #357abd;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 10px rgba(0,0,0,0.3);
+    }
+    .btn:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    #reset-button { margin-top: 15px; }
+
+
+    /* ================================================================ */
+    /* 6. レスポンシブ対応 (スマートフォンなど) */
+    /* ================================================================ */
+    @media (max-width: 980px) {
+      body { padding: 10px; }
+      #game-container { padding: 15px; }
+      .main-game-area {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+
+    /* ================================================================ */
+    /* 7. 勝利演出用のモーダル */
+    /* ================================================================ */
+    .modal {
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+        display: none; /* 初期状態は非表示 */
+        justify-content: center;
+        align-items: center;
+        box-sizing: border-box;
+    }
+    #confetti-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1001;
+    }
+    .modal-content {
+        position: relative;
+        z-index: 1002;
+        background-color: var(--container-bg);
+        padding: 40px 60px;
+        border-radius: 20px;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        animation: slide-in 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    }
+    #winner-message {
+        font-size: 2.8em;
+        font-weight: 700;
+        margin: 0 0 30px;
+        color: var(--text-color);
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+    }
+    #winner-message ruby rt {
+      font-size: 0.5em;
+    }
+    #close-modal-btn {
+      font-size: 1.2em;
+      padding: 12px 25px;
+    }
+
+    @keyframes slide-in {
+      from { transform: translateY(-50px) scale(0.8); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <h1 class="title">ゴブレット</h1>
+    <div class="main-game-area">
+      <div id="player1-area" class="player-area">
+        <h3>プレイヤー1の<ruby>駒<rt>こま</rt></ruby></h3>
+        <div id="p1-hand" class="player-hand"></div>
+      </div>
+      <div id="board" class="board"></div>
+      <div id="player2-area" class="player-area">
+        <h3>プレイヤー2の<ruby>駒<rt>こま</rt></ruby></h3>
+        <div id="p2-hand" class="player-hand"></div>
+      </div>
+    </div>
+    <div id="game-info-area">
+      <div id="turn-indicator"></div>
+      <div id="message-area"></div>
+      <button id="reset-button" class="btn">もう<ruby>一<rt>いち</rt>度<rt>ど</rt></ruby>！</button>
+    </div>
+  </div>
+
+  <!-- 勝利者表示モーダル -->
+  <div id="winner-modal" class="modal">
+      <canvas id="confetti-canvas"></canvas>
+      <div class="modal-content">
+          <h2 id="winner-message"></h2>
+          <button id="close-modal-btn" class="btn"><ruby>閉<rt>と</rt></ruby>じる</button>
+      </div>
+  </div>
+
+
+<script>
+// ================================================================
+// 1. ゲーム全体で使う設定（定数）と状態（変数）
+// ================================================================
+const BOARD_SIZE = 3;
+const PLAYERS = { P1: 'orange', P2: 'blue' };
+const SIZES = { SMALL: 'small', MEDIUM: 'medium', LARGE: 'large' };
+const SIZE_ORDER = [SIZES.SMALL, SIZES.MEDIUM, SIZES.LARGE];
+
+let boardState, playerPieces, currentPlayer, selectedPiece, messageTimeout;
+let isGameOver = false;
+
+// 紙吹雪アニメーション用の状態オブジェクト
+let confetti = {
+    animationId: null,
+    particles: [],
+    colors: ["#ff8a65", "#4fc3f7", "#ffd54f", "#81c784", "#ff80ab", "#9575cd"],
+    ctx: null
+};
+
+// ================================================================
+// 2. HTMLの要素を取得
+// ================================================================
+const gameContainer = document.getElementById('game-container');
+const boardElement = document.getElementById('board');
+const player1HandElement = document.getElementById('p1-hand');
+const player2HandElement = document.getElementById('p2-hand');
+const turnIndicator = document.getElementById('turn-indicator');
+const messageArea = document.getElementById('message-area');
+const resetButton = document.getElementById('reset-button');
+const winnerModal = document.getElementById('winner-modal');
+const winnerMessage = document.getElementById('winner-message');
+const closeModalBtn = document.getElementById('close-modal-btn');
+const confettiCanvas = document.getElementById('confetti-canvas');
+
+
+// ================================================================
+// 3. ゲームの初期化
+// ================================================================
+function initializeGame() {
+  stopConfetti();
+  winnerModal.style.display = 'none';
+  isGameOver = false;
+
+  boardState = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null).map(() => []));
+  playerPieces = {
+    [PLAYERS.P1]: createInitialHand(),
+    [PLAYERS.P2]: createInitialHand()
+  };
+  selectedPiece = null;
+  currentPlayer = PLAYERS.P1;
+
+  boardElement.innerHTML = '';
+  player1HandElement.innerHTML = '';
+  player2HandElement.innerHTML = '';
+  
+  createBoardCells();
+  renderPlayerHand(PLAYERS.P1);
+  renderPlayerHand(PLAYERS.P2);
+
+  updateTurnIndicator();
+  displayMessage("");
+  enableInteraction();
+}
+
+function createInitialHand() {
+  const hand = [];
+  SIZE_ORDER.forEach(size => {
+    for (let i = 0; i < 2; i++) {
+      hand.push({ size: size });
+    }
+  });
+  return [hand];
+}
+
+function createBoardCells() {
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.row = r;
+      cell.dataset.col = c;
+      boardElement.appendChild(cell);
+      renderCellPieces(r, c);
+    }
+  }
+}
+
+
+// ================================================================
+// 4. 描画関連の関数
+// ================================================================
+function renderPlayerHand(player) {
+  const handElement = (player === PLAYERS.P1) ? player1HandElement : player2HandElement;
+  handElement.innerHTML = '';
+
+  const stacks = playerPieces[player];
+  stacks.forEach((stack, stackIndex) => {
+    stack.forEach((pieceData) => {
+      const pieceElement = createPieceElement(player, pieceData.size);
+      pieceElement.dataset.player = player;
+      pieceElement.dataset.size = pieceData.size;
+      pieceElement.dataset.fromStack = stackIndex;
+      handElement.appendChild(pieceElement);
+    });
+  });
+}
+
+function renderCellPieces(row, col) {
+  const cellElement = boardElement.querySelector(`.cell[data-row='${row}'][data-col='${col}']`);
+  if (!cellElement) return;
+  cellElement.innerHTML = '';
+
+  const cellStack = boardState[row][col];
+  if (cellStack && cellStack.length > 0) {
+    const topPieceData = cellStack[cellStack.length - 1];
+    const pieceElement = createPieceElement(topPieceData.player, topPieceData.size);
+    pieceElement.dataset.player = topPieceData.player;
+    pieceElement.dataset.size = topPieceData.size;
+    pieceElement.dataset.fromRow = row;
+    pieceElement.dataset.fromCol = col;
+    cellElement.appendChild(pieceElement);
+  }
+}
+
+function createPieceElement(player, size) {
+  const pieceWrapper = document.createElement('div');
+  pieceWrapper.className = `piece piece-${size}`;
+
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  let width, height, viewBox, bodyPath, eyePath;
+  const color = (player === PLAYERS.P1) ? '#ff8a65' : '#4fc3f7';
+  const strokeColor = '#424242';
+
+  switch (size) {
+    case SIZES.LARGE:
+      width = 80; height = 80; viewBox = "0 0 50 50";
+      bodyPath = "M5,45 C5,20 15,5 25,5 C35,5 45,20 45,45 Z";
+      eyePath = "M18,25 a3,3 0 1,1 0,0.1 Z M32,25 a3,3 0 1,1 0,0.1 Z";
+      break;
+    case SIZES.MEDIUM:
+      width = 60; height = 60; viewBox = "0 0 40 40";
+      bodyPath = "M8,35 C8,15 15,5 20,5 C25,5 32,15 32,35 Z";
+      eyePath = "M20,20 a3,3 0 1,1 0,0.1 Z";
+      break;
+    case SIZES.SMALL:
+    default:
+      width = 40; height = 40; viewBox = "0 0 30 30";
+      bodyPath = "M10,25 C10,10 12,5 15,5 C18,5 20,10 20,25 Z";
+      eyePath = "";
+      break;
+  }
+  
+  svg.setAttribute("width", width);
+  svg.setAttribute("height", height);
+  svg.setAttribute("viewBox", viewBox);
+  
+  const body = document.createElementNS(svgNS, "path");
+  body.setAttribute("d", bodyPath);
+  body.setAttribute("fill", color);
+  body.setAttribute("stroke", strokeColor);
+  body.setAttribute("stroke-width", "1.5");
+  svg.appendChild(body);
+
+  if(eyePath){
+    const eyes = document.createElementNS(svgNS, "path");
+    eyes.setAttribute("d", eyePath);
+    eyes.setAttribute("fill", strokeColor);
+    svg.appendChild(eyes);
+  }
+  
+  pieceWrapper.appendChild(svg);
+  return pieceWrapper;
+}
+
+
+// ================================================================
+// 5. ユーザー操作のハンドリング
+// ================================================================
+function handlePieceClick(event) {
+  if (isGameOver) return;
+  event.stopPropagation();
+  const pieceElement = event.currentTarget;
+  const player = pieceElement.dataset.player;
+  const size = pieceElement.dataset.size;
+  const fromStack = pieceElement.dataset.fromStack !== undefined ? parseInt(pieceElement.dataset.fromStack) : null;
+  const fromRow = pieceElement.dataset.fromRow !== undefined ? parseInt(pieceElement.dataset.fromRow) : null;
+  const fromCol = pieceElement.dataset.fromCol !== undefined ? parseInt(pieceElement.dataset.fromCol) : null;
+
+  if (player !== currentPlayer) {
+    displayMessage("<ruby>相手<rt>あいて</rt></ruby>のターンです。", 'error');
+    return;
+  }
+  if (selectedPiece && selectedPiece.element === pieceElement) {
+    deselectPiece(); return;
+  }
+  if (selectedPiece) { deselectPiece(); }
+
+  if (fromRow !== null) {
+    const cellStack = boardState[fromRow][fromCol];
+    if (!cellStack || cellStack.length === 0 || cellStack[cellStack.length - 1].size !== size) return;
+  }
+
+  selectPiece(pieceElement, player, size, fromStack, fromRow !== null ? { row: fromRow, col: fromCol } : null);
+}
+
+function handleCellClick(event) {
+  if (isGameOver || !selectedPiece) return;
+
+  const cellElement = event.currentTarget;
+  const targetRow = parseInt(cellElement.dataset.row);
+  const targetCol = parseInt(cellElement.dataset.col);
+
+  if (tryMovePiece(targetRow, targetCol)) {
+    const movedFromHand = selectedPiece.fromStack !== null;
+    if (selectedPiece.fromCell) {
+        renderCellPieces(selectedPiece.fromCell.row, selectedPiece.fromCell.col);
+    }
+    deselectPiece();
+    renderCellPieces(targetRow, targetCol);
+    if (movedFromHand) renderPlayerHand(currentPlayer);
+    
+    const winner = checkWinCondition();
+    if (winner) {
+      endGame(winner);
+    } else {
+      switchTurn();
+    }
+  }
+}
+
+
+// ================================================================
+// 6. ゲームのコアロジック
+// ================================================================
+function selectPiece(element, player, size, fromStack, fromCell) {
+  deselectPiece();
+  selectedPiece = { element, player, size, fromStack, fromCell };
+  element.classList.add('selected');
+  displayMessage("<ruby>配置先<rt>はいちさき</rt></ruby>のセルをクリックしてください。");
+}
+
+function deselectPiece() {
+  if (selectedPiece && selectedPiece.element) {
+    selectedPiece.element.classList.remove('selected');
+  }
+  selectedPiece = null;
+}
+
+function tryMovePiece(targetRow, targetCol) {
+  if (!selectedPiece) return false;
+  const targetCellStack = boardState[targetRow][targetCol];
+  const topPieceOnTarget = targetCellStack.length > 0 ? targetCellStack[targetCellStack.length - 1] : null;
+
+  if (topPieceOnTarget) {
+    if (SIZE_ORDER.indexOf(selectedPiece.size) <= SIZE_ORDER.indexOf(topPieceOnTarget.size)) {
+      displayMessage("より<ruby>小<rt>ちい</rt></ruby>さいコマの<ruby>上<rt>うえ</rt></ruby>には<ruby>置<rt>お</rt></ruby>けません。", 'error');
+      return false;
+    }
+  }
+
+  let pieceRemoved = false;
+  if (selectedPiece.fromStack !== null) {
+    const sourceHand = playerPieces[selectedPiece.player][0];
+    const pieceIndex = sourceHand.findIndex(p => p.size === selectedPiece.size);
+    if (pieceIndex > -1) {
+      sourceHand.splice(pieceIndex, 1);
+      pieceRemoved = true;
+    }
+  } else if (selectedPiece.fromCell !== null) {
+    const sourceCellStack = boardState[selectedPiece.fromCell.row][selectedPiece.fromCell.col];
+    sourceCellStack.pop();
+    pieceRemoved = true;
+  }
+
+  if (pieceRemoved) {
+    targetCellStack.push({ player: selectedPiece.player, size: selectedPiece.size });
+    return true;
+  }
+  return false;
+}
+
+function switchTurn() {
+  currentPlayer = (currentPlayer === PLAYERS.P1) ? PLAYERS.P2 : PLAYERS.P1;
+  updateTurnIndicator();
+  displayMessage("");
+  enableInteraction();
+}
+
+function checkWinCondition() {
+  const getTopPiece = (r, c) => {
+    const stack = boardState[r][c];
+    return stack && stack.length > 0 ? stack[stack.length - 1] : null;
+  };
+  
+  const checkLine = (line) => {
+    const firstPiece = line[0];
+    if (!firstPiece) return null;
+    if (line.every(piece => piece && piece.player === firstPiece.player)) {
+      return firstPiece.player;
+    }
+    return null;
+  };
+  
+  let winner = null;
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    winner = checkLine([getTopPiece(r, 0), getTopPiece(r, 1), getTopPiece(r, 2)]);
+    if (winner) return winner;
+  }
+  for (let c = 0; c < BOARD_SIZE; c++) {
+    winner = checkLine([getTopPiece(0, c), getTopPiece(1, c), getTopPiece(2, c)]);
+    if (winner) return winner;
+  }
+  winner = checkLine([getTopPiece(0, 0), getTopPiece(1, 1), getTopPiece(2, 2)]);
+  if (winner) return winner;
+  
+  winner = checkLine([getTopPiece(0, 2), getTopPiece(1, 1), getTopPiece(2, 0)]);
+  if (winner) return winner;
+
+  return null;
+}
+
+/**
+ * ゲームを終了させ、勝利演出を開始する関数。
+ */
+function endGame(winner) {
+    isGameOver = true;
+    disableInteraction();
+    const winnerName = winner === PLAYERS.P1 ? 'プレイヤー1' : 'プレイヤー2';
+    winnerMessage.innerHTML = `🎉 ${winnerName} の<ruby>勝利<rt>しょうり</rt></ruby>！ 🎉`;
+    winnerModal.style.display = 'flex';
+    startConfetti();
+}
+
+// ================================================================
+// 7. UI更新とヘルパー関数
+// ================================================================
+function updateTurnIndicator() {
+  const playerName = currentPlayer === PLAYERS.P1 ? 'プレイヤー1' : 'プレイヤー2';
+  turnIndicator.innerHTML = `<ruby>現在<rt>げんざい</rt></ruby>のターン: ${playerName}`;
+  turnIndicator.className = 'turn-indicator';
+  turnIndicator.classList.add(currentPlayer === PLAYERS.P1 ? 'player1-turn' : 'player2-turn');
+}
+
+function displayMessage(msg, type = '') {
+  messageArea.innerHTML = msg;
+  messageArea.className = 'message-area';
+  if (type) messageArea.classList.add(type);
+  if (messageTimeout) clearTimeout(messageTimeout);
+  if (msg) {
+    messageTimeout = setTimeout(() => {
+      messageArea.innerHTML = '';
+      messageArea.className = 'message-area';
+    }, 4000);
+  }
+}
+
+
+// ================================================================
+// 8. イベントリスナーの管理
+// ================================================================
+function enableInteraction() {
+  disableInteraction();
+  boardElement.querySelectorAll('.cell').forEach(cell => {
+    cell.addEventListener('click', handleCellClick);
+  });
+
+  const allPieces = document.querySelectorAll('.piece');
+  allPieces.forEach(piece => {
+    const player = piece.dataset.player;
+    let isSelectable = false;
+    if (player === currentPlayer) {
+      if (piece.dataset.fromStack !== undefined) {
+        isSelectable = true;
+      } else {
+        const row = parseInt(piece.dataset.fromRow);
+        const col = parseInt(piece.dataset.fromCol);
+        const stack = boardState[row][col];
+        if (stack.length > 0 && stack[stack.length-1].size === piece.dataset.size) {
+          isSelectable = true;
+        }
+      }
+    }
+    if (isSelectable) {
+      piece.addEventListener('click', handlePieceClick);
+      piece.classList.add('selectable');
+    }
+  });
+}
+
+function disableInteraction() {
+  const allElements = [...document.querySelectorAll('.cell'), ...document.querySelectorAll('.piece')];
+  allElements.forEach(el => {
+    const newEl = el.cloneNode(true);
+    el.parentNode.replaceChild(newEl, el);
+  });
+}
+
+// ================================================================
+// 9. 紙吹雪アニメーション
+// ================================================================
+function startConfetti() {
+    confetti.ctx = confettiCanvas.getContext('2d');
+    confettiCanvas.width = window.innerWidth;
+    confettiCanvas.height = window.innerHeight;
+    confetti.particles = Array.from({ length: 150 }, createParticle);
+    animateConfetti();
+}
+
+function stopConfetti() {
+    cancelAnimationFrame(confetti.animationId);
+    if (confetti.ctx) {
+        confetti.ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    }
+}
+
+function createParticle() {
+    const canvas = confettiCanvas;
+    return {
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height - canvas.height,
+        size: Math.random() * 10 + 5,
+        color: confetti.colors[Math.floor(Math.random() * confetti.colors.length)],
+        speed: Math.random() * 3 + 2,
+        angle: Math.random() * Math.PI * 2,
+        spin: (Math.random() - 0.5) * 0.2
+    };
+}
+
+function animateConfetti() {
+    const ctx = confetti.ctx;
+    const canvas = confettiCanvas;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    confetti.particles.forEach((p, i) => {
+        p.y += p.speed;
+        p.x += Math.sin(p.angle);
+        p.angle += p.spin;
+        ctx.fillStyle = p.color;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.angle);
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+        ctx.restore();
+        if (p.y > canvas.height) {
+            confetti.particles[i] = createParticle();
+            confetti.particles[i].y = -10;
+        }
+    });
+    confetti.animationId = requestAnimationFrame(animateConfetti);
+}
+
+// ================================================================
+// 10. ゲームの開始
+// ================================================================
+resetButton.addEventListener('click', initializeGame);
+
+// 「閉じる」ボタンの処理を追加
+closeModalBtn.addEventListener('click', () => {
+    winnerModal.style.display = 'none';
+    stopConfetti();
+});
+
+document.addEventListener('DOMContentLoaded', initializeGame);
+
+</script>
+</body>
+</html>
