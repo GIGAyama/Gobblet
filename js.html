@@ -1,0 +1,485 @@
+<script>
+/**
+ * ================================================================
+ * パクパクゴブレット - ゲームロジック (GIGA Standard Ver.7)
+ * ================================================================
+ */
+
+// --- 1. 定数と設定 ---
+const BOARD_SIZE = 3;
+const PLAYERS = { P1: 'p1', P2: 'p2' };
+const PLAYER_NAMES = { [PLAYERS.P1]: 'オレンジ', [PLAYERS.P2]: 'ブルー' };
+const PLAYER_COLORS = { [PLAYERS.P1]: '#ff7043', [PLAYERS.P2]: '#42a5f5' };
+const SIZES = { SMALL: 0, MEDIUM: 1, LARGE: 2 }; 
+const SIZE_NAMES = ['小', '中', '大'];
+
+// --- 2. ゲーム状態 ---
+let state = {
+  board: [],      // 3x3の配列 (各セルはスタック)
+  hands: {},      // プレイヤーの手持ち駒
+  turn: null,     // 現在のターン
+  selected: null, // 選択中の駒 { type: 'hand'|'board', player, size, row, col, index }
+  isGameOver: false,
+  soundEnabled: true
+};
+
+// --- 3. 音声合成 (Web Audio API) ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playTone(type) {
+  if (!state.soundEnabled) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  const now = audioCtx.currentTime;
+  
+  if (type === 'select') {
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(400, now);
+    osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+    osc.start(now);
+    osc.stop(now + 0.1);
+  } else if (type === 'place') {
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(800, now);
+    osc.frequency.exponentialRampToValueAtTime(200, now + 0.1);
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+    osc.start(now);
+    osc.stop(now + 0.1);
+  } else if (type === 'gobble') {
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(200, now);
+    osc.frequency.linearRampToValueAtTime(400, now + 0.1);
+    osc.frequency.linearRampToValueAtTime(100, now + 0.2);
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+    osc.start(now);
+    osc.stop(now + 0.2);
+  } else if (type === 'win') {
+    const notes = [523.25, 659.25, 783.99, 1046.50];
+    notes.forEach((freq, i) => {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.connect(g);
+      g.connect(audioCtx.destination);
+      o.type = 'triangle';
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(0.2, now + i * 0.1);
+      g.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.4);
+      o.start(now + i * 0.1);
+      o.stop(now + i * 0.1 + 0.4);
+    });
+  } else if (type === 'error') {
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(150, now);
+    osc.frequency.linearRampToValueAtTime(100, now + 0.2);
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+    osc.start(now);
+    osc.stop(now + 0.2);
+  }
+}
+
+// --- 4. 初期化処理 ---
+function initGame() {
+  state.board = Array(BOARD_SIZE).fill(null).map(() => 
+    Array(BOARD_SIZE).fill(null).map(() => [])
+  );
+
+  const initialHand = [];
+  [SIZES.SMALL, SIZES.MEDIUM, SIZES.LARGE].forEach(s => {
+    initialHand.push({ size: s, id: crypto.randomUUID() });
+    initialHand.push({ size: s, id: crypto.randomUUID() });
+  });
+  
+  state.hands = {
+    [PLAYERS.P1]: [...initialHand], 
+    [PLAYERS.P2]: [...initialHand]
+  };
+
+  state.turn = PLAYERS.P1;
+  state.selected = null;
+  state.isGameOver = false;
+
+  renderAll();
+  updateTurnDisplay();
+}
+
+// --- 5. 描画ロジック (SVG生成 - 基準サイズ100で統一) ---
+function createPieceSVG(player, size, isSelected = false) {
+  const color = PLAYER_COLORS[player];
+  const sizePx = 100;
+  
+  const mouthOpen = isSelected ? 15 : 4;
+  const eyeOffset = sizePx * 0.25;
+  const eyeSize = sizePx * 0.08;
+
+  return `
+    <svg width="100%" height="100%" viewBox="0 0 ${sizePx} ${sizePx}" class="piece-svg" style="display:block;">
+      <circle cx="${sizePx/2}" cy="${sizePx/2}" r="${sizePx/2 - 2}" fill="${color}" stroke="#fff" stroke-width="4" />
+      <circle cx="${sizePx/2 - eyeOffset}" cy="${sizePx/2 - 10}" r="${eyeSize+3}" fill="white" />
+      <circle cx="${sizePx/2 + eyeOffset}" cy="${sizePx/2 - 10}" r="${eyeSize+3}" fill="white" />
+      <circle cx="${sizePx/2 - eyeOffset}" cy="${sizePx/2 - 10}" r="${eyeSize}" fill="#333" />
+      <circle cx="${sizePx/2 + eyeOffset}" cy="${sizePx/2 - 10}" r="${eyeSize}" fill="#333" />
+      <ellipse cx="${sizePx/2}" cy="${sizePx/2 + 15}" rx="${sizePx * 0.15}" ry="${mouthOpen}" fill="#333" />
+    </svg>
+  `;
+}
+
+function renderAll() {
+  renderBoard();
+  renderHands();
+}
+
+function renderBoard() {
+  const boardEl = document.getElementById('game-board');
+  boardEl.innerHTML = '';
+
+  state.board.forEach((row, rIndex) => {
+    row.forEach((stack, cIndex) => {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.row = rIndex;
+      cell.dataset.col = cIndex;
+      cell.onclick = () => handleCellClick(rIndex, cIndex);
+
+      if (stack.length > 0) {
+        const topPiece = stack[stack.length - 1];
+        const pieceDiv = document.createElement('div');
+        pieceDiv.className = 'piece';
+        pieceDiv.dataset.size = topPiece.size;
+        
+        const scaleMap = ['45%', '65%', '85%'];
+        pieceDiv.style.width = scaleMap[topPiece.size];
+        pieceDiv.style.height = scaleMap[topPiece.size];
+        
+        if (state.selected && state.selected.type === 'board' && 
+            state.selected.row === rIndex && state.selected.col === cIndex) {
+          pieceDiv.classList.add('selected');
+          pieceDiv.innerHTML = createPieceSVG(topPiece.player, topPiece.size, true);
+        } else {
+          pieceDiv.innerHTML = createPieceSVG(topPiece.player, topPiece.size, false);
+        }
+        cell.appendChild(pieceDiv);
+      }
+      boardEl.appendChild(cell);
+    });
+  });
+}
+
+function renderHands() {
+  [PLAYERS.P1, PLAYERS.P2].forEach(p => {
+    const container = document.getElementById(`${p}-hand`);
+    container.innerHTML = '';
+    
+    if (state.turn === p) container.classList.add('active-turn');
+    else container.classList.remove('active-turn');
+
+    const pieces = state.hands[p].sort((a, b) => a.size - b.size);
+
+    pieces.forEach((piece, index) => {
+      const pieceWrapper = document.createElement('div');
+      pieceWrapper.className = 'piece';
+      pieceWrapper.dataset.size = piece.size;
+      
+      const isSelected = (state.selected && state.selected.type === 'hand' && 
+                          state.selected.player === p && state.selected.index === index);
+      
+      if (isSelected) pieceWrapper.classList.add('selected');
+      
+      pieceWrapper.innerHTML = createPieceSVG(p, piece.size, isSelected);
+      
+      pieceWrapper.onclick = (e) => {
+          e.stopPropagation();
+          handleHandPieceClick(p, index, piece.size);
+      };
+      container.appendChild(pieceWrapper);
+    });
+  });
+}
+
+function updateTurnDisplay() {
+  const indicator = document.getElementById('turn-indicator');
+  const name = PLAYER_NAMES[state.turn];
+  indicator.innerHTML = `<span style="color:${PLAYER_COLORS[state.turn]}">●</span> ${name} のばん`;
+}
+
+// --- 6. 操作ハンドリング ---
+
+function selectBoardPiece(row, col, piece) {
+    state.selected = { type: 'board', player: piece.player, size: piece.size, row, col };
+    playTone('select');
+    renderAll();
+}
+
+function handleHandPieceClick(player, index, size) {
+  if (state.isGameOver) return;
+  if (player !== state.turn) {
+    playTone('error'); return;
+  }
+  state.selected = { type: 'hand', player, size, index };
+  playTone('select');
+  renderAll(); 
+}
+
+function handleCellClick(row, col) {
+  if (state.isGameOver) return;
+  const stack = state.board[row][col];
+  const topPiece = stack.length > 0 ? stack[stack.length - 1] : null;
+
+  // 1. クリックした場所に「自分のコマ」がある場合 (最優先)
+  if (topPiece && topPiece.player === state.turn) {
+      if (!state.selected) {
+          selectBoardPiece(row, col, topPiece);
+          return;
+      }
+      if (state.selected.type === 'board' && state.selected.row === row && state.selected.col === col) {
+          state.selected = null;
+          playTone('select'); 
+          renderAll();
+          return;
+      }
+      if (state.selected.size <= topPiece.size) {
+          selectBoardPiece(row, col, topPiece);
+          return;
+      }
+  }
+
+  // 2. 相手のコマをクリックした場合
+  if (!state.selected && topPiece && topPiece.player !== state.turn) {
+      playTone('error');
+      Swal.fire({
+          icon: 'warning',
+          title: 'ちがうよ！',
+          html: 'あいての コマは <ruby>動<rt>うご</rt></ruby>かせないよ', // ルビ追加
+          timer: 1500,
+          showConfirmButton: false,
+          heightAuto: false
+      });
+      return;
+  }
+
+  // 3. 移動・配置処理
+  if (state.selected) {
+      if (topPiece && topPiece.size >= state.selected.size) {
+          playTone('error');
+          Swal.fire({
+              icon: 'error',
+              title: 'おけないよ！', // 漢字をひらがなに
+              html: 'そこには <b>もっと<ruby>大<rt>おお</rt></ruby>きい</b> コマがあるよ。<br><ruby>大<rt>おお</rt></ruby>きいコマなら かぶせられるよ！', // ルビ追加
+              timer: 2000,
+              showConfirmButton: false,
+              heightAuto: false
+          });
+          return;
+      }
+
+      // 移動実行
+      if (state.selected.type === 'hand') {
+          state.hands[state.selected.player].splice(state.selected.index, 1);
+      } else {
+          const sourceRow = state.selected.row;
+          const sourceCol = state.selected.col;
+          state.board[sourceRow][sourceCol].pop();
+
+          // 自爆チェック
+          const earlyWinner = checkWin();
+          if (earlyWinner) {
+              state.isGameOver = true;
+              renderAll();
+              playTone('win');
+              setTimeout(() => showWinModal(earlyWinner), 500);
+              return;
+          }
+      }
+
+      const newPiece = { player: state.selected.player, size: state.selected.size };
+      state.board[row][col].push(newPiece);
+
+      if (topPiece) playTone('gobble');
+      else playTone('place');
+
+      state.selected = null;
+      renderBoard();
+      
+      if (topPiece) {
+          const cellEl = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"] .piece svg`);
+          if (cellEl) cellEl.classList.add('gobble-anim');
+      }
+      renderHands();
+
+      const winner = checkWin();
+      if (winner) {
+          state.isGameOver = true;
+          playTone('win');
+          setTimeout(() => showWinModal(winner), 500);
+      } else {
+          state.turn = (state.turn === PLAYERS.P1) ? PLAYERS.P2 : PLAYERS.P1;
+          updateTurnDisplay();
+          renderHands(); 
+      }
+  }
+}
+
+// --- 7. 勝敗判定 ---
+function checkWin() {
+    const grid = state.board.map(row => row.map(stack => {
+        return stack.length > 0 ? stack[stack.length - 1].player : null;
+    }));
+
+    const lines = [
+        [[0,0],[0,1],[0,2]], [[1,0],[1,1],[1,2]], [[2,0],[2,1],[2,2]], 
+        [[0,0],[1,0],[2,0]], [[0,1],[1,1],[2,1]], [[0,2],[1,2],[2,2]], 
+        [[0,0],[1,1],[2,2]], [[0,2],[1,1],[2,0]]                       
+    ];
+
+    for (const line of lines) {
+        const [a, b, c] = line;
+        const pA = grid[a[0]][a[1]];
+        const pB = grid[b[0]][b[1]];
+        const pC = grid[c[0]][c[1]];
+
+        if (pA && pA === pB && pA === pC) {
+            highlightWinLine(line);
+            return pA;
+        }
+    }
+    return null;
+}
+
+function highlightWinLine(line) {
+    line.forEach(([r, c]) => {
+        const cell = document.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
+        if (cell) cell.classList.add('win-line');
+    });
+}
+
+function showWinModal(winner) {
+    const name = PLAYER_NAMES[winner];
+    const color = PLAYER_COLORS[winner];
+    Swal.fire({
+        title: `<span style="color:${color}">🎉 ${name} のかち！ 🎉</span>`,
+        html: '<p>おめでとう！ すごい<ruby>作戦<rt>さくせん</rt></ruby>だったね！</p>', // ルビ追加
+        icon: 'success',
+        confirmButtonText: 'もう一回あそぶ！',
+        customClass: { confirmButton: 'pop-btn btn btn-primary btn-lg' },
+        allowOutsideClick: false,
+        background: '#fff9c4',
+        heightAuto: false
+    }).then(() => initGame());
+}
+
+// --- 8. ルール表示 (ルビ付き) ---
+function showRules() {
+    Swal.fire({
+        title: 'あそびかた',
+        width: '600px',
+        maxWidth: '95%',
+        html: `
+            <div style="text-align:left; font-size:1rem; line-height:1.6; color:#5d4037;">
+                <!-- ルール1 -->
+                <div style="background:rgba(255,255,255,0.6); border-radius:15px; padding:15px; margin-bottom:15px;">
+                    <div style="display:flex; align-items:center; margin-bottom:10px;">
+                        <span style="background:#ff7043; color:white; border-radius:50%; width:24px; height:24px; display:inline-flex; justify-content:center; align-items:center; margin-right:8px; font-weight:bold;">1</span>
+                        <h4 style="margin:0; font-size:1.1rem; font-weight:bold;">おおきさ バトル！</h4>
+                    </div>
+                    <div style="display:flex; justify-content:center; margin:10px 0;">
+                        <svg width="150" height="60" viewBox="0 0 150 60">
+                            <circle cx="40" cy="35" r="15" fill="#42a5f5" stroke="#fff" stroke-width="2" />
+                            <circle cx="35" cy="30" r="3" fill="#fff" /><circle cx="45" cy="30" r="3" fill="#fff" />
+                            <circle cx="110" cy="30" r="25" fill="#ff7043" stroke="#fff" stroke-width="2" />
+                            <circle cx="100" cy="20" r="5" fill="#fff" /><circle cx="120" cy="20" r="5" fill="#fff" />
+                            <path d="M 110 30 L 95 40 L 110 50 Z" fill="#333" />
+                            <path d="M 100 30 Q 75 10 50 25" fill="none" stroke="#5d4037" stroke-width="3" marker-end="url(#arrowhead)" />
+                            <defs>
+                                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
+                                    <polygon points="0 0, 10 3.5, 0 7" fill="#5d4037" />
+                                </marker>
+                            </defs>
+                        </svg>
+                    </div>
+                    <p style="margin:0;"><ruby>大<rt>おお</rt></ruby>きいコマは、<ruby>小<rt>ちい</rt></ruby>さいコマの<ruby>上<rt>うえ</rt></ruby>から<br><span style="color:#d84315;font-weight:900; font-size:1.2em;">パクッ！</span>とかぶせることができるよ。</p>
+                </div>
+
+                <!-- ルール2 -->
+                <div style="background:rgba(255,255,255,0.6); border-radius:15px; padding:15px; margin-bottom:15px;">
+                    <div style="display:flex; align-items:center; margin-bottom:10px;">
+                        <span style="background:#ffca28; color:white; border-radius:50%; width:24px; height:24px; display:inline-flex; justify-content:center; align-items:center; margin-right:8px; font-weight:bold;">2</span>
+                        <h4 style="margin:0; font-size:1.1rem; font-weight:bold;">3つ ならべたら <ruby>勝<rt>か</rt></ruby>ち！</h4>
+                    </div>
+                    <div style="display:flex; justify-content:center; margin:10px 0;">
+                        <svg width="180" height="50" viewBox="0 0 180 50">
+                            <circle cx="30" cy="25" r="18" fill="#ff7043" stroke="#fff" stroke-width="2" />
+                            <circle cx="90" cy="25" r="18" fill="#ff7043" stroke="#fff" stroke-width="2" />
+                            <circle cx="150" cy="25" r="18" fill="#ff7043" stroke="#fff" stroke-width="2" />
+                            <line x1="48" y1="25" x2="72" y2="25" stroke="#ffca28" stroke-width="4" stroke-linecap="round" />
+                            <line x1="108" y1="25" x2="132" y2="25" stroke="#ffca28" stroke-width="4" stroke-linecap="round" />
+                            <path d="M 15 10 L 18 18 L 26 21 L 18 24 L 15 32 L 12 24 L 4 21 L 12 18 Z" fill="#ffd54f" />
+                             <path d="M 165 10 L 168 18 L 176 21 L 168 24 L 165 32 L 162 24 L 154 21 L 162 18 Z" fill="#ffd54f" />
+                        </svg>
+                    </div>
+                    <p style="margin:0;"><ruby>自分<rt>じぶん</rt></ruby>の<ruby>色<rt>いろ</rt></ruby>のコマを<br>「たて・よこ・ななめ」のどれかに<br><b>3つ</b> ならべたら<ruby>勝<rt>か</rt></ruby>ちだよ！</p>
+                </div>
+
+                <!-- ルール3 -->
+                <div style="background:rgba(255,255,255,0.6); border-radius:15px; padding:15px;">
+                    <div style="display:flex; align-items:center; margin-bottom:10px;">
+                        <span style="background:#42a5f5; color:white; border-radius:50%; width:24px; height:24px; display:inline-flex; justify-content:center; align-items:center; margin-right:8px; font-weight:bold;">3</span>
+                        <h4 style="margin:0; font-size:1.1rem; font-weight:bold;"><ruby>動<rt>うご</rt></ruby>かしても OK！</h4>
+                    </div>
+                    <div style="display:flex; justify-content:center; margin:10px 0;">
+                         <svg width="150" height="60" viewBox="0 0 150 60">
+                            <rect x="20" y="10" width="40" height="40" fill="none" stroke="#bcaaa4" stroke-width="2" rx="4" />
+                            <rect x="90" y="10" width="40" height="40" fill="none" stroke="#bcaaa4" stroke-width="2" rx="4" />
+                            <circle cx="40" cy="30" r="15" fill="#42a5f5" stroke="#fff" stroke-width="2" opacity="0.5" />
+                            <circle cx="110" cy="30" r="15" fill="#42a5f5" stroke="#fff" stroke-width="2" />
+                             <path d="M 40 30 Q 75 0 110 25" fill="none" stroke="#5d4037" stroke-width="2" stroke-dasharray="4" marker-end="url(#arrowhead)" />
+                        </svg>
+                    </div>
+                    <p style="margin:0;"><ruby>置<rt>お</rt></ruby>いてあるコマを<ruby>別<rt>べつ</rt></ruby>の<ruby>場所<rt>ばしょ</rt></ruby>に<ruby>動<rt>うご</rt></ruby>かせるよ。<br><small style="color:#d32f2f;">※<ruby>動<rt>うご</rt></ruby>かした<ruby>下<rt>した</rt></ruby>から<ruby>相手<rt>あいて</rt></ruby>が<ruby>揃<rt>そろ</rt></ruby>ったら、<b>あなたの<ruby>負<rt>ま</rt></ruby>け</b>になっちゃうよ！</small></p>
+                </div>
+            </div>
+        `,
+        confirmButtonText: 'わかった！',
+        customClass: { confirmButton: 'pop-btn btn btn-success btn-lg' },
+        background: '#fff9c4',
+        heightAuto: false
+    });
+}
+
+function toggleSound() {
+    state.soundEnabled = !state.soundEnabled;
+    const btn = document.getElementById('sound-btn');
+    btn.innerHTML = state.soundEnabled ? '🔊 ON' : '🔇 OFF';
+    if(state.soundEnabled) playTone('select');
+}
+
+window.onload = () => {
+    initGame();
+    document.getElementById('rule-btn').onclick = showRules;
+    document.getElementById('sound-btn').onclick = toggleSound;
+    document.getElementById('reset-btn').onclick = () => {
+        playTone('select');
+        Swal.fire({
+            title: 'やりなおす？',
+            html: '<ruby>今<rt>いま</rt></ruby>の<ruby>勝負<rt>しょうぶ</rt></ruby>は なかったことになるよ', // ルビ追加
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'はい',
+            cancelButtonText: 'いいえ',
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            heightAuto: false
+        }).then((result) => {
+            if (result.isConfirmed) initGame();
+        });
+    };
+};
+</script>
