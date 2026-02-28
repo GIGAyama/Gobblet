@@ -1,34 +1,41 @@
 /**
- * @fileoverview このファイルは、Google Apps ScriptでWebアプリケーションを
- * 提供するためのサーバーサイドのコードです。
- * ブラウザからのリクエストを受け取り、index.htmlの内容を返します。
+ * ==============================================================================
+ * アプリ名: パクパクゴブレット (GIGAスクール版)
+ * 製作者: GIGA Game Architect
+ * * このファイルはサーバーサイド（Google Apps Script）のコードです。
+ * ブラウザからのアクセスを受け付け、HTMLを表示する役割を持っています。
+ * ==============================================================================
  */
 
 /**
- * Webアプリケーションにブラウザからアクセスがあった時（GETリクエスト）に自動的に実行される、
- * Google Apps Scriptで決められている特別な名前の関数です。
- * この関数は、デプロイされたGASウェブアプリのURLにアクセスすると呼び出されます。
- *
- * @param {object} e - アクセスに関する情報が入ったイベントオブジェクト。
- *                     今回は特にこのオブジェクトのデータを使用しません。
- * @return {HtmlOutput} - ブラウザに表示するためのHTMLコンテンツを返します。
+ * Webアプリにアクセスした時に、一番最初に自動で実行される関数です。
+ * (ここはいじらなくてOKです！)
  */
 function doGet(e) {
-  // HtmlServiceを使って、プロジェクト内の 'index.html' ファイルの内容を読み込みます。
-  // これにより、HTMLファイル内のスクリプトレット（<?!= ... ?>形式のGASコード）も実行されるようになります。
+  // 1. 'index.html' というファイルを探して、Webページのひな形を作ります
   const template = HtmlService.createTemplateFromFile('index');
 
-  // テンプレートを評価（evaluate）して、最終的なHTMLコンテンツを生成します。
-  // スクリプトレットがあればここで処理され、静的なHTMLが完成します。
+  // 2. テンプレートを実行して、最終的なHTMLデータを生成します
   const htmlOutput = template.evaluate();
 
-  // 生成されたHTMLコンテンツに対して、ブラウザでの表示に関する設定を追加します。
-  // これらの設定は、ウェブページの見た目や動作を改善するために重要です。
+  // 3. Webページとしての基本設定を追加します
   htmlOutput
-    .setTitle('ゴブレット') // ブラウザのタブやウィンドウに表示されるタイトルを設定します。
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1.0'); // スマートフォンなど、様々な画面サイズに合わせて表示を最適化するための設定です。
+    .setTitle('パクパクゴブレット') // ブラウザのタブに表示されるタイトル
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1.0') // スマホやタブレットでも見やすくする設定
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL) // サイトへの埋め込みを許可する場合の設定
+    .setFaviconUrl('https://drive.google.com/uc?id=1dKHhagcejNvZw-GWIZhRenUA97eELryn&.png');
 
-  // 設定済みのHTMLコンテンツをブラウザに返します。
-  // これがユーザーの画面に表示されるウェブアプリケーションの本体となります。
+  // 4. 完成したWebページをブラウザに送ります
   return htmlOutput;
+}
+
+/**
+ * HTMLファイルの中に、別のファイル（CSSやJS）を読み込むための「道具」です。
+ * これを使うことで、1つのファイルが長くなりすぎるのを防ぎ、
+ * デザイン(css)やプログラム(js)を別ファイルに分けて管理できるようになります。
+ * * @param {string} filename - 読み込みたいファイルの名前（拡張子なし）
+ * @return {string} - そのファイルの中身
+ */
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
