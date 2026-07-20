@@ -2,9 +2,16 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>パクパクゴブレット</title>
   
+  <!-- PWA Settings -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1a73e8">
+  <link rel="apple-touch-icon" href="favicon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
   <!-- Bootstrap 5 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="icon" href="favicon.png">
@@ -121,6 +128,18 @@
       flex-direction: column;
       justify-content: space-evenly; /* 要素を均等に配置 */
       align-items: center;
+      position: relative;
+    }
+
+    .hand-wrapper {
+      width: 100%;
+    }
+
+    .board-wrapper-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
     }
 
     /* フッター */
@@ -142,7 +161,7 @@
       
       /* 重要: 画面サイズに合わせて調整 */
       width: 100%;
-      max-width: 45vh; /* 縦画面でも収まるように高さ基準で制限 */
+      max-width: min(90vw, 46vh); /* 縦画面でも収まるように高さ基準で制限、横幅も考慮 */
       aspect-ratio: 1 / 1; /* 正方形を維持 */
       display: flex;
       align-items: center;
@@ -232,7 +251,7 @@
       width: 100%;
       
       /* 高さの自動調整 */
-      height: 14vh; 
+      height: 12vh; 
       min-height: 70px;
       max-height: 120px;
       
@@ -262,7 +281,7 @@
     }
 
     /* ================================================================
-     * 5. アニメーション
+     * 5. アニメーション & レスポンシブ (Landscape)
      * ================================================================ */
     @keyframes bounce-select {
       0%, 100% { transform: translateY(0) scale(1); }
@@ -284,7 +303,85 @@
       100% { transform: scale(1); }
     }
 
-    /* 小さい画面(スマホ横向き等)の調整 */
+    /* タブレット・横向きPC・回転スマートフォン向けの高度なレイアウト調整 */
+    @media (orientation: landscape) and (min-width: 576px) {
+      .game-container {
+        max-width: 1000px;
+        flex-direction: row !important;
+        justify-content: space-around;
+        align-items: center;
+        height: 100%;
+        width: 100%;
+        padding: 10px;
+      }
+
+      .hand-wrapper {
+        width: 140px !important;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .hand-wrapper-p2 {
+        order: 1;
+      }
+
+      .board-wrapper-container {
+        order: 2;
+        flex: 1;
+        max-width: 55vh;
+        margin: 0 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .hand-wrapper-p1 {
+        order: 3;
+      }
+
+      .board-wrapper {
+        max-width: 100%;
+        width: 100%;
+        aspect-ratio: 1 / 1;
+      }
+
+      .hand-area {
+        flex-direction: column !important;
+        height: 60vh !important;
+        min-height: 250px !important;
+        max-height: 450px !important;
+        width: 110px !important;
+        justify-content: space-around !important;
+        padding: 10px !important;
+      }
+
+      .p2-badge-container {
+        margin-bottom: 8px !important;
+        justify-content: center !important;
+        width: 100%;
+      }
+
+      .p1-badge-container {
+        margin-top: 8px !important;
+        justify-content: center !important;
+        width: 100%;
+      }
+
+      /* 横画面でのターンインジケーターの配置調整 */
+      .turn-info-container {
+        position: absolute;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: auto;
+        z-index: 20;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+      }
+    }
+
+    /* 小さい画面(スマホ横向き等)の微調整 */
     @media (max-height: 600px) {
         .app-title { font-size: 1rem; }
         header { padding: 2px !important; }
@@ -301,7 +398,10 @@
     <div class="d-flex align-items-center">
       <h1 class="app-title h5 mb-0 me-2">パクパクゴブレット</h1>
     </div>
-    <div>
+    <div class="d-flex align-items-center">
+      <button id="install-btn" class="btn btn-sm btn-success rounded-pill me-1 fw-bold border-0 shadow-sm" style="font-size: 0.75rem; display: none;">
+        📥 インストール
+      </button>
       <button id="sound-btn" class="btn btn-sm btn-light rounded-pill me-1 fw-bold text-primary border-0 shadow-sm" style="font-size: 0.75rem;">
         🔊 ON
       </button>
@@ -315,28 +415,30 @@
   <main>
     <div class="game-container">
       
-      <!-- 相手(P2) -->
-      <div style="width:100%;">
-        <div class="d-flex justify-content-between align-items-end mb-1 px-2">
+      <!-- 相手(P2) 手札ブロック -->
+      <div class="hand-wrapper hand-wrapper-p2">
+        <div class="d-flex justify-content-between align-items-end mb-1 px-2 p2-badge-container">
            <span class="badge rounded-pill text-bg-primary fs-6 shadow-sm" style="font-size:0.75rem;">ブルー (P2)</span>
         </div>
         <div id="p2-hand" class="hand-area p2-bg shadow-inner"></div>
       </div>
 
-      <!-- ゲーム盤 -->
-      <div class="board-wrapper">
-        <div id="game-board" class="board"></div>
+      <!-- ゲーム盤 ブロック -->
+      <div class="board-wrapper-container">
+        <div class="board-wrapper">
+          <div id="game-board" class="board"></div>
+        </div>
       </div>
 
-      <!-- 自分(P1) -->
-      <div style="width:100%;">
+      <!-- 自分(P1) 手札ブロック -->
+      <div class="hand-wrapper hand-wrapper-p1">
         <div id="p1-hand" class="hand-area p1-bg shadow-inner"></div>
-        <div class="d-flex justify-content-between align-items-start mt-1 px-2">
+        <div class="d-flex justify-content-between align-items-start mt-1 px-2 p1-badge-container">
            <span class="badge rounded-pill text-bg-danger fs-6 shadow-sm" style="font-size:0.75rem;">オレンジ (P1)</span>
         </div>
       </div>
 
-      <!-- 操作パネル -->
+      <!-- 操作パネル ブロック -->
       <div class="turn-info-container text-center bg-white bg-opacity-75 rounded-4 shadow-sm px-4 py-2">
         <div id="turn-indicator" class="fw-bold text-dark mb-1" style="font-size:1.1rem;"></div>
         <button id="reset-btn" class="pop-btn btn btn-outline-danger btn-sm px-3 fw-bold rounded-pill" style="font-size:0.8rem;">
@@ -445,6 +547,10 @@
   }
 
   // --- 4. 初期化処理 ---
+  function generateId() {
+    return Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
+  }
+
   function initGame() {
     state.board = Array(BOARD_SIZE).fill(null).map(() => 
       Array(BOARD_SIZE).fill(null).map(() => [])
@@ -452,8 +558,8 @@
 
     const initialHand = [];
     [SIZES.SMALL, SIZES.MEDIUM, SIZES.LARGE].forEach(s => {
-      initialHand.push({ size: s, id: crypto.randomUUID() });
-      initialHand.push({ size: s, id: crypto.randomUUID() });
+      initialHand.push({ size: s, id: generateId() });
+      initialHand.push({ size: s, id: generateId() });
     });
     
     state.hands = {
@@ -581,7 +687,13 @@
     if (player !== state.turn) {
       playTone('error'); return;
     }
-    state.selected = { type: 'hand', player, size, index };
+    // トグル選択解除の追加
+    if (state.selected && state.selected.type === 'hand' && 
+        state.selected.player === player && state.selected.index === index) {
+      state.selected = null;
+    } else {
+      state.selected = { type: 'hand', player, size, index };
+    }
     playTone('select');
     renderAll(); 
   }
@@ -818,10 +930,39 @@
       if(state.soundEnabled) playTone('select');
   }
 
+  // --- 9. PWAインストールの管理 ---
+  let deferredPrompt;
+  window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const installBtn = document.getElementById('install-btn');
+      if (installBtn) installBtn.style.display = 'block';
+  });
+
+  window.addEventListener('appinstalled', () => {
+      console.log('App installed successfully');
+      const installBtn = document.getElementById('install-btn');
+      if (installBtn) installBtn.style.display = 'none';
+  });
+
   window.onload = () => {
       initGame();
       document.getElementById('rule-btn').onclick = showRules;
       document.getElementById('sound-btn').onclick = toggleSound;
+      
+      const installBtn = document.getElementById('install-btn');
+      if (installBtn) {
+          installBtn.onclick = async () => {
+              if (deferredPrompt) {
+                  deferredPrompt.prompt();
+                  const { outcome } = await deferredPrompt.userChoice;
+                  console.log(`User installation decision: ${outcome}`);
+                  deferredPrompt = null;
+                  installBtn.style.display = 'none';
+              }
+          };
+      }
+
       document.getElementById('reset-btn').onclick = () => {
           playTone('select');
           Swal.fire({
@@ -838,6 +979,13 @@
               if (result.isConfirmed) initGame();
           });
       };
+
+      // サービスワーカーの登録
+      if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('/sw.js')
+              .then(reg => console.log('Service Worker registered successfully:', reg.scope))
+              .catch(err => console.error('Service Worker registration failed:', err));
+      }
   };
   </script>
 
