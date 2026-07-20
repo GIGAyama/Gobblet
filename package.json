@@ -1,0 +1,16 @@
+{
+  "name": "gobblet",
+  "version": "1.0.0",
+  "description": "パクパクゴブレット - 3D風のコマをかぶせて遊ぶ対戦型ボードゲーム",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "build": "echo 'No build required'",
+    "lint": "echo 'No lint required'",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
