@@ -1,0 +1,22 @@
+{
+  "id": "/",
+  "name": "パクパクゴブレット",
+  "short_name": "ゴブレット",
+  "description": "大きな駒で小さな駒をかぶせて3つ並べる、2人対戦ボードゲーム",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#fff8c7",
+  "theme_color": "#1769aa",
+  "categories": ["games", "education"],
+  "icons": [
+    {"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"},
+    {"src":"./favicon.png","sizes":"192x192","type":"image/png","purpose":"any"}
+  ],
+  "shortcuts": [
+    {"name":"新しいゲーム","short_name":"新規ゲーム","url":"./"}
+  ]
+}
