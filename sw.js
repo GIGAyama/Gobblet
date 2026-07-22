@@ -1,4 +1,4 @@
-const VERSION = 'gobblet-v4';
+const VERSION = 'gobblet-v5';
 const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg', './favicon.png', './offline.html'];
 
 self.addEventListener('install', event => {
@@ -18,20 +18,22 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET') return;
   const request = event.request;
+  if (request.method !== 'GET') return;
 
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then(response => {
-          const copy = response.clone();
-          caches.open(VERSION).then(cache => cache.put('./index.html', copy));
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(VERSION).then(cache => cache.put('./index.html', copy));
+          }
           return response;
         })
         .catch(async () =>
-          (await caches.match(request)) ||
           (await caches.match('./index.html')) ||
+          (await caches.match(request)) ||
           caches.match('./offline.html')
         )
     );
