@@ -1,0 +1,31 @@
+name: check
+
+# 公開そのものは GitHub Pages の設定（main ブランチのルート）に任せている。
+# ここでは「壊れていないか」を見るだけで、デプロイはしない。
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      # 依存は開発用サーバーの express だけ。高危険度だけを止める
+      - run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: 勝敗判定のテスト
+        run: npm test
+
+      - name: GIGA Standard v4 品質ゲート
+        run: npm run check

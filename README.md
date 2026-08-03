@@ -2,6 +2,10 @@
 
 Webブラウザだけで動作する、3x3マスの戦略ボードゲーム「ゴブレット」風のアプリケーションです。PWA(プログレッシブウェブアプリ)に対応しており、Chromeなどのブラウザから端末にアプリとしてインストールしてオフラインでも遊べます。
 
+- 公開URL：<https://gigayama.github.io/Gobblet/>
+- 先生向けの使い方 → [MANUAL.md](./MANUAL.md)
+- 品質基準への適合状況 → [AUDIT.md](./AUDIT.md)
+
 ## 概要
 
 このゲームは、1つの端末を使って2人で遊ぶ対戦用のボードゲームです。自分の色の駒を、相手よりも先に「縦・横・斜め」のいずれか1列に3つ並べることを目指します。
@@ -18,45 +22,116 @@ Webブラウザだけで動作する、3x3マスの戦略ボードゲーム「�
 
 ## 特徴
 
-* **シングルファイル構成**: ゲーム本体は `index.html` 1つで完結しています。外部ライブラリ・CDN・フォント読み込みは一切なく、オフラインでも完全に動作します。
+* **外部依存ゼロ**: 外部ライブラリ・CDN・Webフォントの読み込みは一切なく、オフラインでも完全に動作します。初回に読み込むファイルは合計 60KB 程度です。
 
 * **PWA対応**: Web App Manifest (`manifest.webmanifest`) と Service Worker (`sw.js`) により、ブラウザからホーム画面/デスクトップにインストールできます。2回目以降はオフラインでも起動できます。
 
-* **レスポンシブ対応**: スマートフォン(縦・横)、タブレット、PCのいずれでも、盤面が画面内で最大サイズになるように自動レイアウトされます。横向き画面では手駒が左右に配置されます。
+* **レスポンシブ対応**: スマートフォン(縦・横)、タブレット、PC、電子黒板のいずれでも、盤面が画面内で最大の正方形になるように自動レイアウトされます。横向き画面では手駒が左右に配置されます。横320px・縦568pxまで、横スクロールも縦の見切れも発生しません。
+
+* **提示モード**: 右上の ⛶ ボタンでフルスクリーンになります。1600px以上の画面では盤と文字がさらに大きくなり、教室の後ろの席からでも読めます。
 
 * **音の演出**: Web Audio APIによる効果音付き(ヘッダーのボタンでON/OFF切り替え可能)。
 
-* **アクセシビリティ**: キーボード操作、スクリーンリーダー向けのARIA属性、`prefers-reduced-motion` に対応しています。
+* **アクセシビリティ**: キーボード操作、スクリーンリーダー向けのARIA属性、`prefers-reduced-motion`、`forced-colors`(ハイコントラスト)に対応しています。タップ領域はすべて44px以上を確保しています。
+
+## ファイル構成
+
+```
+index.html                  画面の骨格。CSS/JS はインラインに書かない（CSP のため）
+css/style.css               ゲーム画面のスタイル
+css/offline.css             圏外画面のスタイル
+js/pwa-install.js           インストールの合図を <head> 最上部で捕まえる
+js/rules.js                 勝敗・配置の判定（画面に依存しない。テスト対象）
+js/app.js                   ゲーム本体
+js/offline.js               圏外画面のボタン
+sw.js                       Service Worker（キャッシュ）
+offline.html                圏外のときに出る画面
+manifest.webmanifest        PWA の設定
+icons/                      192 / 512 / maskable 192 / maskable 512 / apple-touch-icon
+server.js                   開発用サーバー（配信物には含まれない）
+scripts/check-project.mjs   品質ゲート（npm run check）
+tests/                      js/rules.js のテスト
+```
 
 ## 使い方
 
-### ローカルで遊ぶ場合
-
-`index.html` をブラウザ(Chrome, Edge, Safariなど)で開くだけでゲームが開始されます。
-
-開発用サーバーを使う場合:
+### ローカルで動かす
 
 ```bash
 npm install
-npm start   # http://localhost:3000
+npm start   # http://localhost:3000/Gobblet/
 ```
 
-### アプリとしてインストールする場合
+本番(GitHub Pages)と同じ `/Gobblet/` の下で配信されます。`manifest.webmanifest` の
+`scope` / `start_url` はリポジトリ名の絶対パスなので、ルート直下で開くと
+「インストールできない」と誤って判定されます。必ず `/Gobblet/` を開いてください。
 
-HTTPSで配信されたページ(またはlocalhost)をChromeで開くと、ヘッダーに「インストール」ボタンが表示されます。アドレスバーのインストールアイコンからもインストールできます。
+> `index.html` をファイルとして直接ダブルクリックして開く方法は、CSP と Service Worker が
+> 効かないため**推奨しません**。上記のコマンドか、公開URLを使ってください。
 
-### Web上に公開する場合(GitHub Pagesなど)
+### 品質チェックとテスト
 
-リポジトリのファイル一式(`index.html` / `manifest.webmanifest` / `sw.js` / `icon.svg` / `favicon.png` / `offline.html`)を配置し、GitHub Pagesなどの静的ホスティングを有効化するだけで公開できます。
+```bash
+npm run check   # GIGA Standard v4 の機械チェック（表示・PWA・セキュリティ・性能）
+npm test        # js/rules.js（勝敗判定）のテスト
+```
+
+### Web上に公開する
+
+リポジトリのファイル一式をそのまま静的ホスティングに置くだけです。
+GitHub Pages の場合、`main` ブランチのルートを公開設定にします。
+
+**リリースのたびに `sw.js` の `APP_VERSION` を上げてください。**
+上げ忘れると、児童の端末に古い版が残り続けます。
 
 ## 技術スタック
 
 * **フロントエンド**: HTML / CSS / Vanilla JavaScript(外部依存なし)
-* **PWA**: Web App Manifest / Service Worker(キャッシュファースト+ナビゲーションはネットワークファースト)
+* **PWA**: Web App Manifest / Service Worker(静的ファイルはキャッシュファースト、画面遷移はネットワークファースト)
 * **サウンド**: Web Audio API
 * **アイコン/駒**: インラインSVG
 * **開発用サーバー**: Express (`server.js`、任意)
 
+## 🔐 セキュリティ設計
+
+* **個人情報を一切扱いません。** 氏名・出席番号・メールアドレスの入力欄はなく、
+  `localStorage` も使っていません。対局の内容はページを閉じると消えます。
+* **外部との通信がありません。** 外部CDN・外部フォント・アクセス解析・広告はゼロです。
+  そのため CSP の `connect-src` は `'self'` のみで足ります。
+* **CSP**: `index.html` / `offline.html` の `<meta http-equiv="Content-Security-Policy">` で、
+  自分自身以外からの読み込みと、インラインの script / style を禁止しています。
+  この制約があるため、**CSS と JS をインラインに書き戻さないでください。**
+* **Service Worker は他アプリのキャッシュに触れません。** `gigayama.github.io` は
+  複数のアプリで同一オリジンを共有しているため、`caches.keys()` の結果を
+  そのまま削除してはいけません。`CACHE_PREFIX`(`gobblet-`)で始まるものだけを掃除しています。
+* **Service Worker は `localStorage` を操作しません。**
+
+## ⚠️ 制限とクォータ
+
+* **記録は残りません。** 途中で再読み込みすると対局は最初からになります(仕様)。
+* **同じ端末を2人で使う前提**です。ネットワーク越しの対戦機能はありません。
+* **サーバーもデータベースもありません**ので、同時アクセス数の制限はありません。
+  GitHub Pages の制限(ソフト帯域 100GB/月、1リポジトリ 1GB)の範囲内で使えます。
+  初回1回あたりの転送量は約60KBで、40人が一斉に開いても2.4MB程度です。
+* **iOS Safari では `beforeinstallprompt` が発火しない**ため、アプリ内に
+  「インストール」ボタンは表示されません。手順は [MANUAL.md](./MANUAL.md) を参照してください。
+* **フルスクリーンAPIに対応しない端末**(iPhone の Safari 等)では、⛶ ボタンは表示されません。
+
+## 📲 PWA
+
+* `manifest.webmanifest` の `id` / `start_url` / `scope` は
+  **リポジトリ名の絶対パス `/Gobblet/`** です。
+  `gigayama.github.io` は数十個のアプリが同一オリジンを共有しているため、
+  ここを相対パスやルート(`/`)にすると、別アプリと識別子が衝突して
+  「アイコンを押したら違うアプリが開く」事故が起きます。
+  **このリポジトリをコピーして新しいアプリを作るときは、まずこの3つを書き換えてください。**
+* アイコンは `icon.svg` を正本として生成しています。差し替えるときは
+  192 / 512 / maskable 192 / maskable 512 / apple-touch-icon の5枚をまとめて作り直してください。
+  maskable は中央80%の安全地帯に収める必要があります(角が丸く切られるため)。
+* 更新は自動では適用されません。新版は待機したまま
+  「あたらしい バージョンが あります」を表示し、利用者が押したときだけ切り替わります
+  (対局中に画面が作り直されるのを防ぐため)。
+
 ## ライセンス
 
-MIT License
+MIT License — [LICENSE](./LICENSE) を参照してください。
