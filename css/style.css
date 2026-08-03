@@ -1,0 +1,571 @@
+/* パクパクゴブレット — 画面スタイル
+ *
+ * index.html から切り出した。切り出した理由は、CSP（Content-Security-Policy）で
+ * インラインの <style> を禁止するため。見た目・配色・文言は一切変えていない。
+ */
+
+:root {
+  --p1: #f4511e;
+  --p1-dark: #bf360c;
+  --p2: #1e88e5;
+  --p2-dark: #0d47a1;
+  --ink: #4e342e;
+  --paper: #fffdf4;
+  --accent: #fbc02d;
+  --board: #795548;
+  --header-h: 52px;
+  --footer-h: 26px;
+
+  /* 画面幅に応じて伸び縮みする文字サイズ。段階的なメディアクエリを書かずに済む */
+  --fs-body: clamp(15px, 1.6vw + 10px, 18px);
+
+  /* ノッチ・ホームバー・丸角の逃げ幅。未対応端末では 0px になる */
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+
+  /* 児童用画面なので配色は固定する（端末のダークモードで色が反転すると駒の色が伝わらない） */
+  color-scheme: light;
+
+  font-family: ui-rounded, "Hiragino Maru Gothic ProN", "Yu Gothic", system-ui, sans-serif;
+  color: var(--ink);
+  background: #fff8c7;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  min-height: 100vh;   /* dvh 非対応端末向けのフォールバック */
+  min-height: 100dvh;  /* 実際に使われる値。モバイルのアドレスバー分がはみ出さない */
+  /* 高さを「画面ぴったり」に確定させる。min-height だけだと中身が多いときに
+     body ごと伸びてしまい、横向きスマホで盤の下がはみ出す。 */
+  height: 100dvh;
+  display: grid;
+  /* 2行目は「更新のお知らせ」用。出ていないときは高さ0になる */
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  font-size: var(--fs-body);
+  line-height: 1.8;    /* 児童が読む文章（あそびかた）のために広めに取る */
+  background-color: #fff8c7;
+  background-image: radial-gradient(#ffe082 18%, transparent 19%);
+  background-size: 36px 36px;
+}
+
+button {
+  font: inherit;
+  touch-action: manipulation;  /* ダブルタップズームの 300ms 遅延を消す */
+}
+
+/* ── ヘッダー ───────────────────────────────── */
+
+header {
+  grid-row: 1;
+  min-height: var(--header-h);
+  padding: max(6px, var(--safe-t)) max(10px, var(--safe-r)) 6px max(10px, var(--safe-l));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: rgba(255, 255, 255, .94);
+  border-bottom: 3px solid var(--accent);
+  z-index: 5;
+}
+
+h1 {
+  font-size: clamp(1rem, 3.7vw, 1.35rem);
+  line-height: 1;
+  margin: 0;
+  color: #1769aa;
+  white-space: nowrap;
+  /* 「インストール」ボタンが出た狭い画面でも、ボタンを押し出さないための逃げ道 */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.btn {
+  border: 0;
+  border-radius: 999px;
+  /* 低学年の指でも押し外さない下限。GIGA Standard v4 §2-9 */
+  min-width: 44px;
+  min-height: 44px;
+  /* 44px を確保しても文字が上に寄らないよう、中央そろえにする */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 7px 12px;
+  font-weight: 800;
+  background: white;
+  color: #1769aa;
+  box-shadow: 0 2px 6px #0002;
+  cursor: pointer;
+}
+
+.btn:active { transform: scale(.96); }
+
+.btn:focus-visible,
+.cell:focus-visible,
+.piece-button:focus-visible {
+  outline: 3px solid #111;
+  outline-offset: 2px;
+}
+
+.icon-btn {
+  width: 44px;
+  padding: 0;
+  font-size: 1.05rem;
+}
+
+/* インストールの合図を受け取るまでは出さない（押しても何も起きないボタンになるため） */
+.install {
+  display: none;
+  background: #2e7d32;
+  color: #fff;
+}
+
+.install.show { display: inline-flex; }
+
+/* 狭い画面では音ボタンの「ON / OFF」を隠し、絵文字だけにして横幅を稼ぐ。
+   状態は aria-pressed と aria-label で伝わるので、読み上げでは失われない。 */
+@media (max-width: 400px) {
+  header { gap: 4px; }
+  .sound-label { display: none; }
+  #sound { width: 44px; padding: 0; }
+}
+
+/* ── 盤面まわり ─────────────────────────────── */
+
+main {
+  grid-row: 3;
+  min-height: 0;
+  padding: clamp(4px, 1.2vmin, 10px);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.game {
+  width: min(100%, 1120px);
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(58px, auto) minmax(0, 1fr) minmax(58px, auto);
+  gap: clamp(4px, 1vmin, 10px);
+  align-items: center;
+}
+
+.hand-block {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.hand-block.p2 .label { justify-self: start; }
+.hand-block.p1 .label { justify-self: end; }
+
+.label, .turn {
+  background: #fffc;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: clamp(.72rem, 2.4vw, .92rem);
+  font-weight: 900;
+  line-height: 1.2;  /* body の 1.8 を打ち消す。丸バッジの高さを元のまま保つため */
+  box-shadow: 0 2px 5px #0002;
+}
+
+.label.p1 { color: var(--p1-dark); }
+.label.p2 { color: var(--p2-dark); }
+
+.hand {
+  height: clamp(56px, 11dvh, 92px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(3px, 1.4vw, 10px);
+  padding: 4px 8px;
+  border: 3px dashed #0002;
+  border-radius: 16px;
+  background: #ffffffa8;
+  min-width: 0;
+}
+
+.hand.active {
+  background: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px #fbc02d55;
+}
+
+.piece-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  flex: 0 1 auto;
+}
+
+/* 駒は「大きさの違い」が意味そのものなので、見た目は小さいまま残す。
+   代わりに透明な当たり判定を重ねて、どの駒も 44px 四方は押せるようにする。 */
+.piece-button::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
+
+.piece-button[data-size="0"] { width: clamp(36px, 8vmin, 48px);  height: clamp(36px, 8vmin, 48px); }
+.piece-button[data-size="1"] { width: clamp(44px, 10vmin, 60px); height: clamp(44px, 10vmin, 60px); }
+.piece-button[data-size="2"] { width: clamp(52px, 12vmin, 72px); height: clamp(52px, 12vmin, 72px); }
+
+.piece-button.selected {
+  animation: bounce .7s ease-in-out infinite;
+  filter: drop-shadow(0 4px 4px #fbc02d);
+}
+
+.center {
+  min-height: 0;
+  align-self: stretch;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  place-items: center;
+  gap: 5px;
+}
+
+.board-shell {
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  /* 盤の大きさを「この枠の中でいちばん大きい正方形」に決めるための基準にする */
+  container-type: size;
+}
+
+.board-frame {
+  /* 高さだけで決めると、横長の大画面（教員PC・電子黒板）で盤が列からはみ出し、
+     手駒の箱に重なってしまう。枠の幅と高さの小さい方に合わせて正方形を保つ。
+     100cqw / 100cqh は .board-shell 自身の幅・高さ。 */
+  height: 100%;                                /* cq 単位に未対応な古い端末向け */
+  height: min(100cqh, 100cqw, 720px);
+  width: auto;
+  min-height: 0;
+  max-height: 100%;
+  aspect-ratio: 1;
+  padding: clamp(6px, 1.4vmin, 12px);
+  background: var(--board);
+  border-radius: clamp(14px, 3vmin, 24px);
+  box-shadow: 0 6px 0 #4e342e, 0 12px 20px #0003;
+}
+
+.board {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: clamp(5px, 1.3vmin, 10px);
+}
+
+.cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: clamp(9px, 2vmin, 16px);
+  background: var(--paper);
+  box-shadow: inset 0 3px 7px #0002;
+  cursor: pointer;
+  min-width: 0;
+  min-height: 0;
+}
+
+.cell:active { background: #fff3cd; }
+.cell.valid { box-shadow: inset 0 0 0 4px #2e7d32, inset 0 3px 7px #0002; }
+.cell.win { animation: flash .7s infinite alternate; }
+
+.piece {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.piece.selected {
+  animation: bounce .7s ease-in-out infinite;
+  filter: drop-shadow(0 4px 5px #fbc02d);
+}
+
+.piece svg, .piece-button svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.turn { font-size: clamp(.82rem, 2.8vw, 1rem); }
+
+.turn-dot { font-style: normal; }
+
+.reset {
+  min-height: 44px;
+  padding: 5px 11px;
+  color: #b71c1c;
+}
+
+/* ── フッター・ダイアログ・トースト ─────────────── */
+
+footer {
+  grid-row: 4;
+  min-height: var(--footer-h);
+  padding: 4px max(8px, var(--safe-r)) max(4px, var(--safe-b)) max(8px, var(--safe-l));
+  text-align: center;
+  background: #ffff;
+  font-size: .68rem;
+  line-height: 1.4;
+  color: #795548;
+}
+
+dialog {
+  border: 0;
+  border-radius: 20px;
+  max-width: min(92vw, 560px);
+  max-height: 82dvh;
+  padding: 0;
+  background: #fff9d8;
+  color: var(--ink);
+  box-shadow: 0 20px 60px #0005;
+}
+
+dialog::backdrop { background: #0008; }
+
+.dialog-body {
+  padding: 18px;
+  overflow: auto;
+}
+
+.dialog-body h2 {
+  margin: 0 0 12px;
+  color: #1769aa;
+}
+
+.rules {
+  display: grid;
+  gap: 10px;
+  text-align: left;
+}
+
+.rule {
+  padding: 12px;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.rule b { color: #bf360c; }
+
+.dialog-actions {
+  position: sticky;
+  bottom: 0;
+  padding: 10px;
+  background: #fff9d8;
+  text-align: center;
+}
+
+.primary {
+  background: #1769aa;
+  color: #fff;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(36px + var(--safe-b));
+  transform: translateX(-50%) translateY(20px);
+  max-width: min(90vw, 520px);
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: #3e2723;
+  color: #fff;
+  font-weight: 800;
+  line-height: 1.4;
+  opacity: 0;
+  pointer-events: none;
+  transition: .2s;
+  z-index: 20;
+  text-align: center;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* 新しい版が用意できたことを知らせる帯。押すまで切り替えないので、
+   対局の途中で画面が作り直されることがない。
+   画面に重ねると「最初から」ボタンを隠してしまうため、ヘッダーの下の
+   専用の行に置いて、盤やボタンに一切かぶらないようにしている。 */
+.update-bar {
+  grid-row: 2;
+  justify-self: center;
+  margin: 6px max(8px, var(--safe-r)) 0 max(8px, var(--safe-l));
+  display: none;
+  align-items: center;
+  gap: 10px;
+  max-width: min(94vw, 560px);
+  padding: 8px 10px 8px 16px;
+  border-radius: 999px;
+  background: #3e2723;
+  color: #fff;
+  font-weight: 800;
+  font-size: clamp(.78rem, 2.6vw, .95rem);
+  line-height: 1.4;
+  box-shadow: 0 8px 24px #0005;
+}
+
+.update-bar.show { display: flex; }
+
+.update-bar .btn {
+  background: var(--accent);
+  color: #3e2723;
+  padding: 6px 14px;
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+@keyframes bounce { 50% { transform: translateY(-7px) scale(1.06); } }
+@keyframes flash { from { background: #fff59d; } to { background: #ffd54f; } }
+
+/* ── 横向き・低い画面 ───────────────────────── */
+
+@media (orientation: landscape) and (min-width: 480px) {
+  body { --header-h: 48px; --footer-h: 24px; }
+  .game {
+    grid-template-columns: minmax(112px, 1fr) minmax(0, 3fr) minmax(112px, 1fr);
+    grid-template-rows: 1fr;
+    gap: clamp(6px, 1.5vw, 18px);
+  }
+  /* 手駒の列は「ブルー（P2）」の文字がはみ出さない幅を確保する */
+  .game { grid-template-columns: minmax(120px, 1fr) minmax(0, 3fr) minmax(120px, 1fr); }
+  .hand-block { height: 100%; min-height: 0; align-content: center; grid-template-rows: auto minmax(0, 1fr); }
+  .hand-block.p2 { grid-column: 1; }
+  .center { grid-column: 2; grid-row: 1; height: 100%; grid-template-rows: minmax(0, 1fr) auto; }
+  .hand-block.p1 { grid-column: 3; grid-row: 1; grid-template-rows: minmax(0, 1fr) auto; }
+  .hand {
+    /* dvh で高さを決め打ちすると、横向きスマホ（高さ360px程度）で
+       駒6個が入りきらず下にはみ出す。実際に空いている高さに合わせる。 */
+    height: 100%;
+    min-height: 0;
+    width: 100%;
+    flex-direction: column;
+    gap: clamp(3px, 1dvh, 10px);
+    padding: 8px 4px;
+  }
+  /* 大画面では列が広くなりすぎて、手駒の箱だけがぽっかり空いて見える。
+     箱の幅は駒が並ぶぶんだけにして、中央に置く。 */
+  .hand { max-width: 240px; justify-self: center; }
+  /* 縦に入りきらないときは駒を縮めて収める（SVG は縦横比を保つので丸いまま） */
+  .piece-button { min-height: 0; min-width: 0; }
+  .hand-block .label {
+    justify-self: center !important;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .piece-button[data-size="0"] { width: clamp(36px, 7dvh, 48px);  height: clamp(36px, 7dvh, 48px); }
+  .piece-button[data-size="1"] { width: clamp(44px, 9dvh, 60px);  height: clamp(44px, 9dvh, 60px); }
+  .piece-button[data-size="2"] { width: clamp(52px, 11dvh, 72px); height: clamp(52px, 11dvh, 72px); }
+}
+
+@media (max-height: 520px) {
+  header {
+    min-height: 48px;
+    padding-top: max(3px, var(--safe-t));
+    padding-bottom: 3px;
+  }
+  footer { display: none; }
+  .btn { padding: 4px 9px; }
+  .label { font-size: .68rem; }
+  .turn { padding: 3px 8px; }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .controls {
+    position: fixed;
+    bottom: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+  }
+}
+
+/* ── 提示モード（電子黒板・一斉授業） ───────────── */
+
+/* 大画面では余白が余るので、盤と駒を思い切って大きく見せる */
+@media (min-width: 1600px) {
+  /* 電子黒板は教室の後ろから見る。使える横幅を広げて盤そのものを大きくする */
+  .game { width: min(100%, 1600px); }
+  .board-frame { height: min(100cqh, 100cqw, 900px); }
+  .label, .turn { font-size: clamp(1rem, 1.4vw, 1.5rem); }
+  h1 { font-size: clamp(1.35rem, 1.8vw, 2rem); }
+}
+
+/* フルスクリーン中は、教室の後ろの席から見えるよう周辺の文字を大きくする */
+body:fullscreen .label,
+body:fullscreen .turn { font-size: clamp(1rem, 1.8vw, 1.6rem); }
+body:fullscreen .btn { min-height: 56px; }
+
+/* ── 配慮 ─────────────────────────────────── */
+
+/* ハイコントラストモードでは背景色が OS に置き換えられ、ボタンが「面」で
+   区別できなくなる。輪郭線を足して、押せる場所が分かるようにする。 */
+@media (forced-colors: active) {
+  .btn, .cell, .piece-button {
+    border: 2px solid ButtonText;
+  }
+  .cell.valid { border: 4px solid Highlight; }
+  .hand { border-color: ButtonText; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
