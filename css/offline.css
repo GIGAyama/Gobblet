@@ -73,6 +73,34 @@ p { margin: 0 0 20px; }
 .btn:active { transform: scale(.96); }
 .btn:focus-visible { outline: 3px solid #111; outline-offset: 2px; }
 
+
+/* ── ふりがな（ルビ） ───────────────────────── */
+
+/* 漢字の上に読みを出す。児童が読み方でつまずかないようにするため、
+   画面に出る漢字にはすべて付けている。
+   <rp> は、ルビに対応しない環境で「漢字（かんじ）」と括弧書きになるための保険で、
+   読み上げソフトが読みを二重に読まないようにする役目もある。 */
+ruby {
+  ruby-position: over;
+  -webkit-ruby-position: over;   /* 古い Safari 向け */
+  ruby-align: center;
+}
+
+rt {
+  font-size: .55em;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0;
+  /* ふりがなを指でなぞって選択してしまわないように */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ルビに対応する環境では括弧を出さない（対応しない環境だけ表示される） */
+rp { display: none; }
+
+p { line-height: 2.1; }
+
 @media (forced-colors: active) {
   .btn { border: 2px solid ButtonText; }
 }
