@@ -1,1 +1,10 @@
 node_modules/
+dist/
+.env
+.env.*
+.clasp.json
+.DS_Store
+Thumbs.db
+npm-debug.log*
+.vscode/
+.idea/

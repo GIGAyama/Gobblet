@@ -1,0 +1,19 @@
+version: 2
+updates:
+  # 開発用サーバー（server.js）だけが npm 依存を持つ。配信物には含まれないが、
+  # 手元で動かす以上は脆弱性の通知を受け取れるようにしておく。
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
+    # メジャー更新は破壊的変更を含むため、人が判断する。自動 PR は出さない。
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
