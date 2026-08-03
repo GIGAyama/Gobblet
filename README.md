@@ -30,6 +30,9 @@ Webブラウザだけで動作する、3x3マスの戦略ボードゲーム「�
 
 * **提示モード**: 右上の ⛶ ボタンでフルスクリーンになります。1600px以上の画面では盤と文字がさらに大きくなり、教室の後ろの席からでも読めます。
 
+* **ふりがな**: 画面に出るすべての漢字に、ルビ(ふりがな)を付けています。低学年でも自分で読んで遊べます。
+  読み上げソフトが読みを二重に読まないよう、`<rp>` を添えています(GIGA Standard v4 §4)。
+
 * **音の演出**: Web Audio APIによる効果音付き(ヘッダーのボタンでON/OFF切り替え可能)。
 
 * **アクセシビリティ**: キーボード操作、スクリーンリーダー向けのARIA属性、`prefers-reduced-motion`、`forced-colors`(ハイコントラスト)に対応しています。タップ領域はすべて44px以上を確保しています。
@@ -42,6 +45,7 @@ css/style.css               ゲーム画面のスタイル
 css/offline.css             圏外画面のスタイル
 js/pwa-install.js           インストールの合図を <head> 最上部で捕まえる
 js/rules.js                 勝敗・配置の判定（画面に依存しない。テスト対象）
+js/furigana.js              ふりがな。{漢字|かんじ} 記法を <ruby> に組み立てる
 js/app.js                   ゲーム本体
 js/offline.js               圏外画面のボタン
 sw.js                       Service Worker（キャッシュ）
@@ -50,7 +54,7 @@ manifest.webmanifest        PWA の設定
 icons/                      192 / 512 / maskable 192 / maskable 512 / apple-touch-icon
 server.js                   開発用サーバー（配信物には含まれない）
 scripts/check-project.mjs   品質ゲート（npm run check）
-tests/                      js/rules.js のテスト
+tests/                      勝敗判定とふりがなのテスト
 ```
 
 ## 使い方
@@ -73,7 +77,7 @@ npm start   # http://localhost:3000/Gobblet/
 
 ```bash
 npm run check   # GIGA Standard v4 の機械チェック（表示・PWA・セキュリティ・性能）
-npm test        # js/rules.js（勝敗判定）のテスト
+npm test        # 勝敗判定（js/rules.js）とふりがな（js/furigana.js）のテスト
 ```
 
 ### Web上に公開する
@@ -91,6 +95,28 @@ GitHub Pages の場合、`main` ブランチのルートを公開設定にしま
 * **サウンド**: Web Audio API
 * **アイコン/駒**: インラインSVG
 * **開発用サーバー**: Express (`server.js`、任意)
+
+## ✏️ 文言を足すとき・直すときの決まり
+
+**画面に出る漢字には、かならずふりがなを付けてください。** 付け忘れは `npm run check`
+(D14 / D15)と `npm test` で落ちます。
+
+* **HTML に直接書く文章**（あそびかたの説明など）は `<ruby>` をそのまま書きます。
+  JavaScript が動く前でもふりがなが見えるようにするためです。
+
+  ```html
+  <ruby>相手<rp>（</rp><rt>あいて</rt><rp>）</rp></ruby>
+  ```
+
+* **JavaScript から出す文言**（トースト・ダイアログ）は `{漢字|かんじ}` と書きます。
+  `js/furigana.js` が `<ruby>` に組み立て、読み上げ用には `Furigana.strip()` で
+  素のことばに戻したものを `aria-label` に入れます。
+
+  ```javascript
+  notice('もっと{大|おお}きい{駒|こま}なら、そこに{置|お}けます');
+  ```
+
+* `aria-label` などの**属性は画面に出ない**ので、ふりがなは付けません（付けると読み上げが濁ります）。
 
 ## 🔐 セキュリティ設計
 

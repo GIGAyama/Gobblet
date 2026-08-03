@@ -13,6 +13,10 @@
   const names = { [P1]: 'オレンジ', [P2]: 'ブルー' };
   const colors = { [P1]: '#f4511e', [P2]: '#1e88e5' };
 
+  // 駒の呼び名。読み上げ用なのでふりがなの指定は入れない。
+  // 以前は「中さい駒」「大さい駒」という日本語にならない読み上げになっていた。
+  const sizeNames = ['小さい', '中くらいの', '大きい'];
+
   const state = { board: [], hands: {}, turn: P1, selected: null, over: false, sound: true };
   let audio = null;
   let toastTimer = 0;
@@ -86,7 +90,7 @@
           }
           piece.innerHTML = svg(p.player, piece.classList.contains('selected'));
           cell.append(piece);
-          cell.setAttribute('aria-label', `${r + 1}行${c + 1}列、${names[p.player]}の${['小', '中', '大'][p.size]}さい駒`);
+          cell.setAttribute('aria-label', `${r + 1}行${c + 1}列、${names[p.player]}の${sizeNames[p.size]}駒`);
         }
         cell.addEventListener('click', () => cellClick(r, c));
         boardEl.append(cell);
@@ -104,7 +108,7 @@
         b.type = 'button';
         b.className = 'piece-button';
         b.dataset.size = p.size;
-        b.setAttribute('aria-label', `${names[player]}の${['小', '中', '大'][p.size]}さい駒`);
+        b.setAttribute('aria-label', `${names[player]}の${sizeNames[p.size]}駒`);
         if (state.selected?.type === 'hand' && state.selected.piece.id === p.id) b.classList.add('selected');
         b.innerHTML = svg(player, b.classList.contains('selected'));
         b.addEventListener('click', () => handClick(p));
@@ -115,7 +119,7 @@
 
   function handClick(piece) {
     if (state.over) return;
-    if (piece.player !== state.turn) return notice('今は相手のばんです');
+    if (piece.player !== state.turn) return notice('{今|いま}は{相手|あいて}のばんです');
     if (state.selected?.type === 'hand' && state.selected.piece.id === piece.id) state.selected = null;
     else state.selected = { type: 'hand', piece };
     tone('select');
@@ -131,7 +135,7 @@
         tone('select');
         render();
       } else if (p) {
-        notice('相手の駒は動かせません');
+        notice('{相手|あいて}の{駒|こま}は{動|うご}かせません');
       }
       return;
     }
@@ -147,7 +151,7 @@
       render();
       return;
     }
-    if (!canPlace(state.selected.piece, r, c)) return notice('もっと大きい駒なら、そこに置けます');
+    if (!canPlace(state.selected.piece, r, c)) return notice('もっと{大|おお}きい{駒|こま}なら、そこに{置|お}けます');
     moveSelected(r, c);
   }
 
@@ -182,12 +186,14 @@
     state.selected = null;
     tone('win');
     render();
-    showMessage(`🎉 ${names[player]}の勝ち！`, 'すごい作戦でした！', 'もう一回', init);
+    showMessage(`🎉 ${names[player]}の{勝|か}ち！`, 'すごい{作戦|さくせん}でした！', 'もう{一回|いっかい}', init);
   }
 
   function notice(text) {
     tone('error');
-    toastEl.textContent = text;
+    // 画面にはふりがな付きで出し、読み上げ用には素のことばを残す
+    Furigana.setText(toastEl, text);
+    toastEl.setAttribute('aria-label', Furigana.strip(text));
     toastEl.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1600);
@@ -195,9 +201,11 @@
 
   function showMessage(title, text, ok = 'OK', after) {
     const d = $('#message-dialog');
-    $('#message-title').textContent = title;
-    $('#message-text').textContent = text;
-    $('#message-ok').textContent = ok;
+    Furigana.setText($('#message-title'), title);
+    Furigana.setText($('#message-text'), text);
+    Furigana.setText($('#message-ok'), ok);
+    // ボタンは絵ではなく文字なので、読み上げ用にも素のことばを添える
+    $('#message-ok').setAttribute('aria-label', Furigana.strip(ok));
     $('#message-ok').onclick = () => { d.close(); after?.(); };
     d.showModal();
   }
@@ -240,7 +248,8 @@
     if (state.sound) tone('select');
   });
 
-  $('#reset').addEventListener('click', () => showMessage('最初からやり直す？', '今の勝負はリセットされます。', 'やり直す', init));
+  $('#reset').addEventListener('click', () => showMessage(
+    '{最初|さいしょ}からやり{直|なお}す？', '{今|いま}の{勝負|しょうぶ}はリセットされます。', 'やり{直|なお}す', init));
 
   /* ── 提示モード（電子黒板で使うとき） ─────────── */
 
@@ -251,7 +260,7 @@
         if (document.fullscreenElement) await document.exitFullscreen();
         else await document.body.requestFullscreen();
       } catch {
-        notice('この端末では大きく表示できません');
+        notice('この{端末|たんまつ}では{大|おお}きく{表示|ひょうじ}できません');
       }
     });
     document.addEventListener('fullscreenchange', () => {

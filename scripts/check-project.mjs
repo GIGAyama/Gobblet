@@ -169,6 +169,40 @@ for (const [id, label, file] of [
   /requestFullscreen/.test(allJs) ? pass('D11', '提示モード（フルスクリーン）') : fail('D11', '提示モード（フルスクリーン）');
   cfg.notApplicable.print ? skip('D12', '印刷CSS', cfg.notApplicable.print) : null;
   /forced-colors/.test(allCss) ? pass('D13', 'forced-colors 対応') : fail('D13', 'forced-colors 対応');
+
+  // 画面に出る漢字にすべてふりがなが付いているか。
+  // 属性（aria-label など）は読み上げ用で画面には出ないので対象外。
+  {
+    const visibleText = src => {
+      const body = /<body[^>]*>([\s\S]*)<\/body>/i.exec(src)?.[1] ?? '';
+      return body
+        .replace(/<!--[\s\S]*?-->/g, '')
+        .replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, '')
+        .replace(/<ruby\b[\s\S]*?<\/ruby>/gi, '')   // ふりがな付きの部分はまるごと除く
+        .replace(/<[^>]*>/g, '')                    // 残りのタグと属性を除く
+        .replace(/&[a-z]+;|&#\d+;/gi, '');
+    };
+    const kanji = /[一-鿿]/g;
+    const bare = [];
+    for (const f of [cfg.entry, 'offline.html']) {
+      const text = visibleText(read(f) ?? '');
+      const hits = [...new Set(text.match(kanji) ?? [])];
+      if (hits.length) bare.push(`${f}: ${hits.join('')}`);
+    }
+    bare.length
+      ? fail('D14', '画面に出る漢字にふりがなが付いている', `ふりがなの無い漢字: ${bare.join(' / ')}`)
+      : pass('D14', '画面に出る漢字にふりがなが付いている');
+  }
+
+  // JavaScript から出す文言も同じ（{漢字|かんじ} 記法で書く）
+  {
+    const shown = [...allJs.matchAll(/(?:notice|showMessage)\(([\s\S]*?)\);/g)].map(m => m[1]).join('');
+    const literals = [...shown.matchAll(/'([^']*)'|`([^`]*)`/g)].map(m => m[1] ?? m[2]);
+    const bad = literals.filter(l => /[一-鿿]/.test(l.replace(/\{[^|{}]+\|[^|{}]+\}/g, '')));
+    bad.length
+      ? fail('D15', 'JS の画面文言にもふりがなが付いている', bad.join(' / '))
+      : pass('D15', 'JS の画面文言にもふりがなが付いている', `${literals.length}件を確認`);
+  }
 }
 
 /* ── E. PWA ──────────────────────────────── */
