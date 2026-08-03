@@ -1,0 +1,35 @@
+{
+  "$comment": "GIGA Standard v4 の品質ゲート設定。scripts/check-project.mjs が読む。",
+  "appType": "A",
+  "repoName": "Gobblet",
+  "entry": "index.html",
+  "swFile": "sw.js",
+  "manifest": "manifest.webmanifest",
+
+  "limits": {
+    "maxFileBytes": 409600,
+    "maxFileLines": 5000,
+    "maxImageBytes": 153600,
+    "maxIconBytes": 61440,
+    "maxFaviconBytes": 30720,
+    "maxInitialAssetBytes": 1048576,
+    "maxInitialScriptBytes": 307200
+  },
+
+  "requiredIcons": [
+    "icons/icon-192.png",
+    "icons/icon-512.png",
+    "icons/icon-maskable-192.png",
+    "icons/icon-maskable-512.png",
+    "icons/apple-touch-icon.png"
+  ],
+
+  "notApplicable": {
+    "print": "対局画面のみで、印刷して配るものがないため",
+    "studyLog": "学習記録を取らない対戦ゲームのため",
+    "gas": "GAS を使わない静的アプリのため",
+    "canvasDpr": "描画はすべてインライン SVG で、Canvas を使っていないため"
+  },
+
+  "securityExceptions": []
+}

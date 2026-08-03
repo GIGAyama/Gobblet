@@ -8,14 +8,14 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Serve static assets from root directory
-app.use(express.static(__dirname));
+// 本番（GitHub Pages）と同じ /Gobblet/ の下で配信する。
+// manifest の scope / start_url は /Gobblet/ の絶対パスなので、
+// ルート直下だけで動作確認すると「インストールできない」と誤診してしまう。
+app.use('/Gobblet', express.static(__dirname));
 
-// Serve index.html for the root route
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
+app.get('/Gobblet', (req, res) => res.redirect('/Gobblet/'));
+app.get('/', (req, res) => res.redirect('/Gobblet/'));
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running at http://0.0.0.0:${PORT}/`);
+  console.log(`Server running at http://0.0.0.0:${PORT}/Gobblet/`);
 });

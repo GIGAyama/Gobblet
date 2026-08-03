@@ -1,0 +1,85 @@
+/* 圏外のときに出る画面。アプリ本体と同じ配色・同じフォントにして、
+   「壊れた」と思わせないようにする。 */
+
+:root {
+  --ink: #4e342e;
+  --accent: #fbc02d;
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100vh;   /* dvh 非対応端末向けのフォールバック */
+  min-height: 100dvh;
+  padding: max(24px, var(--safe-t)) max(24px, var(--safe-r)) max(24px, var(--safe-b)) max(24px, var(--safe-l));
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font-family: ui-rounded, "Hiragino Maru Gothic ProN", "Yu Gothic", system-ui, sans-serif;
+  font-size: clamp(15px, 1.6vw + 10px, 18px);
+  line-height: 1.8;
+  color: var(--ink);
+  background-color: #fff8c7;
+  background-image: radial-gradient(#ffe082 18%, transparent 19%);
+  background-size: 36px 36px;
+}
+
+main {
+  max-width: 420px;
+  background: #fff;
+  padding: 24px;
+  border-radius: 20px;
+  border-bottom: 6px solid var(--accent);
+  box-shadow: 0 12px 30px #0002;
+}
+
+img { display: block; margin: 0 auto 8px; max-width: 100%; height: auto; }
+
+h1 {
+  font-size: clamp(1.1rem, 4vw, 1.5rem);
+  line-height: 1.5;
+  margin: 0 0 12px;
+  color: #1769aa;
+}
+
+p { margin: 0 0 20px; }
+
+.btn {
+  border: 0;
+  border-radius: 999px;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 20px;
+  font: inherit;
+  font-weight: 800;
+  background: #1769aa;
+  color: #fff;
+  box-shadow: 0 2px 6px #0002;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.btn:active { transform: scale(.96); }
+.btn:focus-visible { outline: 3px solid #111; outline-offset: 2px; }
+
+@media (forced-colors: active) {
+  .btn { border: 2px solid ButtonText; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}

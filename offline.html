@@ -2,20 +2,22 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
   <meta name="theme-color" content="#1769aa">
-  <title>オフライン</title>
-  <style>
-    body{font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;background:#fff8c7;color:#4e342e;text-align:center;padding:24px}
-    main{max-width:420px;background:#fff;padding:24px;border-radius:20px}
-    button{border:0;border-radius:999px;padding:12px 18px;background:#1769aa;color:white;font-weight:700}
-  </style>
+  <meta name="color-scheme" content="light">
+  <title>オフライン｜パクパクゴブレット</title>
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./css/offline.css">
 </head>
 <body>
   <main>
-    <h1>オフラインです</h1>
-    <p>一度読み込んだゲームは通常オフラインでも遊べます。接続が戻ったら再読み込みしてください。</p>
-    <button type="button" onclick="location.reload()">再読み込み</button>
+    <img src="./icons/icon-192.png" width="96" height="96" alt="" decoding="async">
+    <h1>いまインターネットに<br>つながっていません</h1>
+    <p>一度ひらいたことがあれば、つながっていなくても遊べます。<br>下のボタンを押してみてください。</p>
+    <button id="retry" class="btn" type="button">もういちど ためす</button>
   </main>
+  <script src="./js/offline.js"></script>
 </body>
 </html>

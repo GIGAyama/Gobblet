@@ -2,7 +2,16 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
+  <!-- ① インストールの合図を「いちばん先に」受け取る。
+       Chrome は条件が揃うと即座に beforeinstallprompt を出すため、
+       本体スクリプトより後だと合図を取りこぼし、通信が遅い端末で
+       「インストール」ボタンが出なくなる。 -->
+  <script src="./js/pwa-install.js"></script>
+
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <!-- 通信先も読み込み先も自分自身だけ。外部CDN・外部フォント・外部通信は一切ない。 -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
   <meta name="theme-color" content="#1769aa">
   <meta name="color-scheme" content="light">
   <meta name="description" content="大きな駒で小さな駒をかぶせて3つ並べる、2人対戦ボードゲーム">
@@ -11,53 +20,86 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="ゴブレット">
   <title>パクパクゴブレット</title>
+
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="./favicon.png">
-  <style>
-    :root {--p1:#f4511e;--p1-dark:#bf360c;--p2:#1e88e5;--p2-dark:#0d47a1;--ink:#4e342e;--paper:#fffdf4;--accent:#fbc02d;--board:#795548;--header-h:52px;--footer-h:26px;font-family:ui-rounded,"Hiragino Maru Gothic ProN","Yu Gothic",system-ui,sans-serif;color:var(--ink);background:#fff8c7}
-    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;min-height:100%;overscroll-behavior:none}body{min-height:100dvh;display:grid;grid-template-rows:auto minmax(0,1fr) auto;overflow:hidden;background-color:#fff8c7;background-image:radial-gradient(#ffe082 18%,transparent 19%);background-size:36px 36px}button{font:inherit;touch-action:manipulation}
-    header{min-height:var(--header-h);padding:max(6px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) 6px max(10px,env(safe-area-inset-left));display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(255,255,255,.94);border-bottom:3px solid var(--accent);z-index:5}h1{font-size:clamp(1rem,3.7vw,1.35rem);line-height:1;margin:0;color:#1769aa;white-space:nowrap}.actions{display:flex;align-items:center;gap:6px}.btn{border:0;border-radius:999px;min-height:38px;padding:7px 12px;font-weight:800;background:white;color:#1769aa;box-shadow:0 2px 6px #0002;cursor:pointer}.btn:active{transform:scale(.96)}.btn:focus-visible,.cell:focus-visible,.piece-button:focus-visible{outline:3px solid #111;outline-offset:2px}.icon-btn{width:38px;padding:0;font-size:1.05rem}.install{display:none;background:#2e7d32;color:#fff}
-    main{min-height:0;padding:clamp(4px,1.2vmin,10px);display:grid;place-items:center;overflow:hidden}.game{width:min(100%,1120px);height:100%;min-height:0;display:grid;grid-template-rows:minmax(58px,auto) minmax(0,1fr) minmax(58px,auto);gap:clamp(4px,1vmin,10px);align-items:center}.hand-block{min-width:0;display:grid;gap:3px}.hand-block.p2 .label{justify-self:start}.hand-block.p1 .label{justify-self:end}.label,.turn{background:#fffc;border-radius:999px;padding:3px 10px;font-size:clamp(.72rem,2.4vw,.92rem);font-weight:900;box-shadow:0 2px 5px #0002}.label.p1{color:var(--p1-dark)}.label.p2{color:var(--p2-dark)}.hand{height:clamp(56px,11dvh,92px);display:flex;align-items:center;justify-content:center;gap:clamp(2px,1.4vw,10px);padding:4px 8px;border:3px dashed #0002;border-radius:16px;background:#ffffffa8;min-width:0}.hand.active{background:#fff;border-color:var(--accent);box-shadow:0 0 0 3px #fbc02d55}.piece-button{display:grid;place-items:center;border:0;padding:0;background:transparent;border-radius:50%;cursor:pointer;flex:0 1 auto}.piece-button[data-size="0"]{width:clamp(34px,8vmin,48px);height:clamp(34px,8vmin,48px)}.piece-button[data-size="1"]{width:clamp(42px,10vmin,60px);height:clamp(42px,10vmin,60px)}.piece-button[data-size="2"]{width:clamp(50px,12vmin,72px);height:clamp(50px,12vmin,72px)}.piece-button.selected{animation:bounce .7s ease-in-out infinite;filter:drop-shadow(0 4px 4px #fbc02d)}
-    .center{min-height:0;align-self:stretch;display:grid;grid-template-rows:minmax(0,1fr) auto;place-items:center;gap:5px}.board-shell{height:100%;width:100%;min-height:0;display:grid;place-items:center}.board-frame{height:100%;width:auto;min-height:0;max-height:min(92vw,720px);aspect-ratio:1;padding:clamp(6px,1.4vmin,12px);background:var(--board);border-radius:clamp(14px,3vmin,24px);box-shadow:0 6px 0 #4e342e,0 12px 20px #0003}.board{width:100%;height:100%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:clamp(5px,1.3vmin,10px)}.cell{position:relative;display:grid;place-items:center;border:0;border-radius:clamp(9px,2vmin,16px);background:var(--paper);box-shadow:inset 0 3px 7px #0002;cursor:pointer;min-width:0;min-height:0}.cell:active{background:#fff3cd}.cell.valid{box-shadow:inset 0 0 0 4px #2e7d32,inset 0 3px 7px #0002}.cell.win{animation:flash .7s infinite alternate}.piece{position:absolute;display:grid;place-items:center;pointer-events:none}.piece.selected{animation:bounce .7s ease-in-out infinite;filter:drop-shadow(0 4px 5px #fbc02d)}.piece svg,.piece-button svg{width:100%;height:100%;display:block}.controls{display:flex;align-items:center;justify-content:center;gap:7px}.turn{font-size:clamp(.82rem,2.8vw,1rem)}.reset{min-height:34px;padding:5px 11px;color:#b71c1c}
-    footer{min-height:var(--footer-h);padding:4px max(8px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));text-align:center;background:#ffff;font-size:.68rem;color:#795548}dialog{border:0;border-radius:20px;max-width:min(92vw,560px);max-height:82dvh;padding:0;background:#fff9d8;color:var(--ink);box-shadow:0 20px 60px #0005}dialog::backdrop{background:#0008}.dialog-body{padding:18px;overflow:auto}.dialog-body h2{margin:0 0 12px;color:#1769aa}.rules{display:grid;gap:10px;text-align:left}.rule{padding:12px;border-radius:14px;background:#fff}.rule b{color:#bf360c}.dialog-actions{position:sticky;bottom:0;padding:10px;background:#fff9d8;text-align:center}.primary{background:#1769aa;color:#fff}.toast{position:fixed;left:50%;bottom:calc(36px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);max-width:min(90vw,520px);padding:9px 14px;border-radius:999px;background:#3e2723;color:#fff;font-weight:800;opacity:0;pointer-events:none;transition:.2s;z-index:20;text-align:center}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-    @keyframes bounce{50%{transform:translateY(-7px) scale(1.06)}}@keyframes flash{from{background:#fff59d}to{background:#ffd54f}}
-    @media (orientation:landscape) and (min-width:480px){body{--header-h:48px;--footer-h:24px}.game{grid-template-columns:minmax(112px,1fr) minmax(0,3fr) minmax(112px,1fr);grid-template-rows:1fr;gap:clamp(6px,1.5vw,18px)}.hand-block{height:100%;align-content:center}.hand-block.p2{grid-column:1}.center{grid-column:2;grid-row:1;height:100%}.hand-block.p1{grid-column:3;grid-row:1}.hand{height:min(72dvh,520px);width:100%;flex-direction:column;gap:clamp(2px,1dvh,10px);padding:8px 4px}.hand-block .label{justify-self:center!important}.piece-button[data-size="0"]{width:clamp(32px,7dvh,48px);height:clamp(32px,7dvh,48px)}.piece-button[data-size="1"]{width:clamp(40px,9dvh,60px);height:clamp(40px,9dvh,60px)}.piece-button[data-size="2"]{width:clamp(48px,11dvh,72px);height:clamp(48px,11dvh,72px)}.board-frame{max-height:min(56vw,720px)}.center{grid-template-rows:minmax(0,1fr) auto}}
-    @media (max-height:520px){header{min-height:40px;padding-top:max(3px,env(safe-area-inset-top));padding-bottom:3px}footer{display:none}.btn{min-height:34px;padding:4px 9px}.icon-btn{width:34px}.label{font-size:.68rem}.turn{padding:3px 8px}}
-    @media (orientation:landscape) and (max-height:520px){.board-frame{max-height:min(56vw,500px)}.controls{position:fixed;bottom:3px;left:50%;transform:translateX(-50%);z-index:3}}
-    @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
-  </style>
+  <link rel="icon" type="image/png" href="./favicon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="./icons/icon-512.png">
+  <!-- iOS は maskable 非対応。専用の四角いアイコンを渡す -->
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+
+  <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
-  <header><h1>パクパクゴブレット</h1><div class="actions"><button id="install" class="btn install" type="button">インストール</button><button id="sound" class="btn" type="button" aria-pressed="true">🔊 ON</button><button id="rules" class="btn icon-btn" type="button" aria-label="遊び方">？</button></div></header>
-  <main><section class="game" aria-label="ゲーム盤"><div class="hand-block p2"><span class="label p2">ブルー（P2）</span><div id="p2-hand" class="hand" aria-label="ブルーの手持ち駒"></div></div><div class="center"><div class="board-shell"><div class="board-frame"><div id="board" class="board" role="grid" aria-label="3かける3のゲーム盤"></div></div></div><div class="controls"><div id="turn" class="turn" aria-live="polite"></div><button id="reset" class="btn reset" type="button">最初から</button></div></div><div class="hand-block p1"><div id="p1-hand" class="hand" aria-label="オレンジの手持ち駒"></div><span class="label p1">オレンジ（P1）</span></div></section></main>
+  <header>
+    <h1>パクパクゴブレット</h1>
+    <div class="actions">
+      <button id="install" class="btn install" type="button">インストール</button>
+      <button id="sound" class="btn" type="button" aria-pressed="true" aria-label="音を消す"><span class="sound-icon" aria-hidden="true">🔊</span><span class="sound-label">ON</span></button>
+      <button id="fullscreen" class="btn icon-btn" type="button" aria-pressed="false" aria-label="大きく表示（電子黒板用）">⛶</button>
+      <button id="rules" class="btn icon-btn" type="button" aria-label="遊び方">？</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="game" aria-label="ゲーム盤">
+      <div class="hand-block p2">
+        <span class="label p2">ブルー（P2）</span>
+        <div id="p2-hand" class="hand" aria-label="ブルーの手持ち駒"></div>
+      </div>
+      <div class="center">
+        <div class="board-shell">
+          <div class="board-frame">
+            <div id="board" class="board" role="grid" aria-label="3かける3のゲーム盤"></div>
+          </div>
+        </div>
+        <div class="controls">
+          <div id="turn" class="turn" aria-live="polite"></div>
+          <button id="reset" class="btn reset" type="button">最初から</button>
+        </div>
+      </div>
+      <div class="hand-block p1">
+        <div id="p1-hand" class="hand" aria-label="オレンジの手持ち駒"></div>
+        <span class="label p1">オレンジ（P1）</span>
+      </div>
+    </section>
+  </main>
+
   <footer>© 2026 パクパクゴブレット GIGA山</footer>
-  <dialog id="rules-dialog"><div class="dialog-body"><h2>あそびかた</h2><div class="rules"><div class="rule"><b>1. 大きい駒でパクッ！</b><br>大きい駒は、小さい駒の上にかぶせられます。</div><div class="rule"><b>2. 3つ並べたら勝ち！</b><br>自分の色を、たて・よこ・ななめに3つ並べます。</div><div class="rule"><b>3. 盤上の駒も動かせる！</b><br>ただし、下の駒が現れて相手が3つ並んだら、その時点で相手の勝ちです。</div></div></div><div class="dialog-actions"><button class="btn primary close-dialog" type="button">わかった！</button></div></dialog>
-  <dialog id="message-dialog"><div class="dialog-body"><h2 id="message-title"></h2><p id="message-text"></p></div><div class="dialog-actions"><button id="message-ok" class="btn primary" type="button">OK</button></div></dialog><div id="toast" class="toast" role="status" aria-live="polite"></div>
-<script>
-(() => {
-  'use strict';
-  const N=3,P1='p1',P2='p2',names={[P1]:'オレンジ',[P2]:'ブルー'},colors={[P1]:'#f4511e',[P2]:'#1e88e5'};
-  const state={board:[],hands:{},turn:P1,selected:null,over:false,sound:true};let audio=null,deferredPrompt=null,toastTimer=0,winning=[];
-  const $=s=>document.querySelector(s),boardEl=$('#board'),turnEl=$('#turn'),toastEl=$('#toast');const uid=()=>crypto.randomUUID?.()??`${Date.now()}-${Math.random()}`;const makeHand=player=>[0,0,1,1,2,2].map(size=>({id:uid(),player,size}));
-  function init(){state.board=Array.from({length:N},()=>Array.from({length:N},()=>[]));state.hands={[P1]:makeHand(P1),[P2]:makeHand(P2)};state.turn=P1;state.selected=null;state.over=false;winning=[];render()}
-  function top(r,c){const s=state.board[r][c];return s[s.length-1]||null}
-  function svg(player,selected){return `<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="47" fill="${colors[player]}" stroke="#fff" stroke-width="5"/><circle cx="28" cy="38" r="11" fill="#fff"/><circle cx="72" cy="38" r="11" fill="#fff"/><circle cx="28" cy="38" r="6" fill="#263238"/><circle cx="72" cy="38" r="6" fill="#263238"/><ellipse cx="50" cy="68" rx="16" ry="${selected?15:6}" fill="#263238"/></svg>`}
-  function render(){renderBoard();renderHands();turnEl.innerHTML=`<span style="color:${colors[state.turn]}">●</span> ${names[state.turn]} のばん`}
-  function renderBoard(){boardEl.replaceChildren();for(let r=0;r<N;r++)for(let c=0;c<N;c++){const cell=document.createElement('button');cell.type='button';cell.className='cell';cell.dataset.row=r;cell.dataset.col=c;cell.setAttribute('role','gridcell');cell.setAttribute('aria-label',`${r+1}行${c+1}列`);if(winning.some(([wr,wc])=>wr===r&&wc===c))cell.classList.add('win');const p=top(r,c);if(state.selected&&canPlace(state.selected.piece,r,c))cell.classList.add('valid');if(p){const piece=document.createElement('span');piece.className='piece';piece.style.width=piece.style.height=['48%','68%','88%'][p.size];if(state.selected?.type==='board'&&state.selected.r===r&&state.selected.c===c)piece.classList.add('selected');piece.innerHTML=svg(p.player,piece.classList.contains('selected'));cell.append(piece);cell.setAttribute('aria-label',`${r+1}行${c+1}列、${names[p.player]}の${['小','中','大'][p.size]}さい駒`)}cell.addEventListener('click',()=>cellClick(r,c));boardEl.append(cell)}}
-  function renderHands(){for(const player of[P1,P2]){const box=$(`#${player}-hand`);box.replaceChildren();box.classList.toggle('active',state.turn===player&&!state.over);for(const p of[...state.hands[player]].sort((a,b)=>a.size-b.size)){const b=document.createElement('button');b.type='button';b.className='piece-button';b.dataset.size=p.size;b.setAttribute('aria-label',`${names[player]}の${['小','中','大'][p.size]}さい駒`);if(state.selected?.type==='hand'&&state.selected.piece.id===p.id)b.classList.add('selected');b.innerHTML=svg(player,b.classList.contains('selected'));b.addEventListener('click',()=>handClick(p));box.append(b)}}}
-  function handClick(piece){if(state.over)return;if(piece.player!==state.turn)return notice('今は相手のばんです');if(state.selected?.type==='hand'&&state.selected.piece.id===piece.id)state.selected=null;else state.selected={type:'hand',piece};tone('select');render()}
-  function cellClick(r,c){if(state.over)return;const p=top(r,c);if(!state.selected){if(p?.player===state.turn){state.selected={type:'board',piece:p,r,c};tone('select');render()}else if(p)notice('相手の駒は動かせません');return}if(state.selected.type==='board'&&state.selected.r===r&&state.selected.c===c){state.selected=null;tone('select');render();return}if(p?.player===state.turn&&state.selected.piece.size<=p.size){state.selected={type:'board',piece:p,r,c};tone('select');render();return}if(!canPlace(state.selected.piece,r,c))return notice('もっと大きい駒なら、そこに置けます');moveSelected(r,c)}
-  function canPlace(piece,r,c){const p=top(r,c);return !p||p.size<piece.size}
-  function moveSelected(r,c){const sel=state.selected;const covered=Boolean(top(r,c));if(sel.type==='hand'){const i=state.hands[sel.piece.player].findIndex(x=>x.id===sel.piece.id);if(i<0)return;state.hands[sel.piece.player].splice(i,1)}else{state.board[sel.r][sel.c].pop();const revealed=winner();if(revealed){state.board[r][c].push(sel.piece);return finish(revealed)}}state.board[r][c].push(sel.piece);state.selected=null;tone(covered?'place':'select');const won=winner();if(won)return finish(won);state.turn=state.turn===P1?P2:P1;render()}
-  function winner(){const lines=[[[0,0],[0,1],[0,2]],[[1,0],[1,1],[1,2]],[[2,0],[2,1],[2,2]],[[0,0],[1,0],[2,0]],[[0,1],[1,1],[2,1]],[[0,2],[1,2],[2,2]],[[0,0],[1,1],[2,2]],[[0,2],[1,1],[2,0]]];for(const line of lines){const ps=line.map(([r,c])=>top(r,c)?.player);if(ps[0]&&ps.every(x=>x===ps[0])){winning=line;return ps[0]}}winning=[];return null}
-  function finish(player){state.over=true;state.selected=null;tone('win');render();showMessage(`🎉 ${names[player]}の勝ち！`,'すごい作戦でした！','もう一回',init)}
-  function notice(text){tone('error');toastEl.textContent=text;toastEl.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toastEl.classList.remove('show'),1600)}
-  function showMessage(title,text,ok='OK',after){const d=$('#message-dialog');$('#message-title').textContent=title;$('#message-text').textContent=text;$('#message-ok').textContent=ok;$('#message-ok').onclick=()=>{d.close();after?.()};d.showModal()}
-  function tone(type){if(!state.sound)return;try{audio??=new AudioContext();if(audio.state==='suspended')audio.resume();const now=audio.currentTime,notes=type==='win'?[523,659,784]:[type==='error'?140:type==='place'?660:440];notes.forEach((f,i)=>{const o=audio.createOscillator(),g=audio.createGain();o.connect(g).connect(audio.destination);o.type=type==='error'?'sawtooth':'sine';o.frequency.value=f;g.gain.setValueAtTime(.13,now+i*.1);g.gain.exponentialRampToValueAtTime(.001,now+i*.1+.18);o.start(now+i*.1);o.stop(now+i*.1+.2)})}catch{state.sound=false}}
-  $('#rules').addEventListener('click',()=>$('#rules-dialog').showModal());$('.close-dialog').addEventListener('click',()=>$('#rules-dialog').close());$('#sound').addEventListener('click',e=>{state.sound=!state.sound;e.currentTarget.textContent=state.sound?'🔊 ON':'🔇 OFF';e.currentTarget.setAttribute('aria-pressed',String(state.sound));if(state.sound)tone('select')});$('#reset').addEventListener('click',()=>showMessage('最初からやり直す？','今の勝負はリセットされます。','やり直す',init));
-  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('#install').style.display='inline-block'});$('#install').addEventListener('click',async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;$('#install').style.display='none'});window.addEventListener('appinstalled',()=>{$('#install').style.display='none';deferredPrompt=null});if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(console.error));init()
-})();
-</script>
+
+  <dialog id="rules-dialog">
+    <div class="dialog-body">
+      <h2>あそびかた</h2>
+      <div class="rules">
+        <div class="rule"><b>1. 大きい駒でパクッ！</b><br>大きい駒は、小さい駒の上にかぶせられます。</div>
+        <div class="rule"><b>2. 3つ並べたら勝ち！</b><br>自分の色を、たて・よこ・ななめに3つ並べます。</div>
+        <div class="rule"><b>3. 盤上の駒も動かせる！</b><br>ただし、下の駒が現れて相手が3つ並んだら、その時点で相手の勝ちです。</div>
+      </div>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn primary close-dialog" type="button">わかった！</button>
+    </div>
+  </dialog>
+
+  <dialog id="message-dialog">
+    <div class="dialog-body">
+      <h2 id="message-title"></h2>
+      <p id="message-text"></p>
+    </div>
+    <div class="dialog-actions">
+      <button id="message-ok" class="btn primary" type="button">OK</button>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <div id="update-bar" class="update-bar" role="status" aria-live="polite">
+    <span>あたらしい バージョンが あります</span>
+    <button id="update-apply" class="btn" type="button">さいしんに する</button>
+  </div>
+
+  <script src="./js/rules.js"></script>
+  <script src="./js/app.js"></script>
 </body>
 </html>
