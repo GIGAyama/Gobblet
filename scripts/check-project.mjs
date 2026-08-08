@@ -145,8 +145,11 @@ for (const [id, label, file] of [
     skip('D5', 'Canvas の DPR 補正', cfg.notApplicable.canvasDpr);
   }
 
-  // 画像の重さ
-  const images = files.filter(f => /\.(png|jpe?g|webp|gif)$/i.test(f));
+  // 画像の重さ。
+  // 見ているのは「児童の端末が実際に受け取る画像」なので、docs/ の中は数えない。
+  // 記事用のスクリーンショットのような、配信物に含まれない資料まで縛ると、
+  // 資料の解像度を落とすほうに力が働いてしまい、この検査の目的と合わない。
+  const images = files.filter(f => /\.(png|jpe?g|webp|gif)$/i.test(f) && !f.startsWith('docs/'));
   const heavy = images.filter(f => {
     const s = size(f);
     if (/^favicon\.png$/i.test(f)) return s > cfg.limits.maxFaviconBytes;
