@@ -10,7 +10,7 @@
  * localStorage を一切操作しない。
  */
 const CACHE_PREFIX = 'gobblet-';
-const APP_VERSION = '2.1.0';            // ← リリースごとに必ず上げる
+const APP_VERSION = '2.1.1';            // ← リリースごとに必ず上げる
 const CACHE_STATIC = CACHE_PREFIX + 'static-' + APP_VERSION;
 const CACHE_RUNTIME = CACHE_PREFIX + 'runtime-v1';
 
