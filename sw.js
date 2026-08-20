@@ -2,7 +2,8 @@
  * パクパクゴブレット — Service Worker
  *
  * 【重要】activate では自アプリ以外のキャッシュを削除しない。
- *   gigayama.github.io は複数のアプリで同一オリジンを共有しているため、
+ *   旧配信元の gigayama.github.io は複数のアプリで同一オリジンを共有していた。
+ *   同居する配置に戻したときに他アプリを巻き込まないよう、
  *   caches.keys() を全部消すと、他のアプリがオフラインで起動しなくなる。
  *   CACHE_PREFIX で始まるキャッシュだけを掃除すること。
  *
@@ -10,7 +11,7 @@
  * localStorage を一切操作しない。
  */
 const CACHE_PREFIX = 'gobblet-';
-const APP_VERSION = '2.1.1';            // ← リリースごとに必ず上げる
+const APP_VERSION = '2.2.0';            // ← リリースごとに必ず上げる
 const CACHE_STATIC = CACHE_PREFIX + 'static-' + APP_VERSION;
 const CACHE_RUNTIME = CACHE_PREFIX + 'runtime-v1';
 

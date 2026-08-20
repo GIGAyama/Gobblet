@@ -210,13 +210,28 @@ for (const [id, label, file] of [
 
 /* ── E. PWA ──────────────────────────────── */
 {
-  const want = `/${cfg.repoName}/`;
+  // 正しい値は「どこで配信するか」で変わる。
+  // CNAME があれば独自ドメインの直下に置かれるので "./"。
+  // 旧構成のようにオリジンを他アプリと共有する配置なら、取り違えを避けるため
+  // リポジトリ名の絶対パスが要る。
+  // ⚠️ 独自ドメインでリポジトリ名の絶対パスに戻すと、scope がページの URL を
+  //    含まなくなり、manifest ごと無視されて PWA としてインストールできなくなる。
+  const want = existsSync(join(ROOT, 'CNAME')) ? './' : `/${cfg.repoName}/`;
   if (!manifest) fail('E1', 'manifest がある');
   else {
     const bad = ['id', 'start_url', 'scope'].filter(k => !String(manifest[k] ?? '').startsWith(want));
     bad.length
       ? fail('E1', `manifest の id/scope/start_url が ${want} 始まり`, bad.map(k => `${k}=${manifest[k]}`).join(', '))
       : pass('E1', `manifest の id/scope/start_url が ${want} 始まり`);
+
+    // shortcuts の url も scope の中でなければならない。
+    // scope の外を指すショートカットはブラウザに捨てられる（メニューに出ない）。
+    const badShortcuts = (manifest.shortcuts ?? [])
+      .map(sc => String(sc.url ?? ''))
+      .filter(u => !u.startsWith(want));
+    badShortcuts.length
+      ? fail('E1b', `shortcuts の url が ${want} 始まり`, badShortcuts.join(', '))
+      : pass('E1b', `shortcuts の url が ${want} 始まり`);
 
     const purposes = (manifest.icons ?? []).map(i => `${i.sizes}:${i.purpose}`);
     const needMaskable = purposes.some(p => p.includes('maskable'));

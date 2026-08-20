@@ -1,6 +1,6 @@
 {
   "name": "gobblet",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "パクパクゴブレット - 3D風のコマをかぶせて遊ぶ対戦型ボードゲーム",
   "main": "server.js",
   "type": "module",
