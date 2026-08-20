@@ -8,7 +8,7 @@
 
 Webブラウザだけで動作する、3x3マスの戦略ボードゲーム「ゴブレット」風のアプリケーションです。PWA(プログレッシブウェブアプリ)に対応しており、Chromeなどのブラウザから端末にアプリとしてインストールしてオフラインでも遊べます。
 
-- 公開URL：<https://gigayama.github.io/Gobblet/>
+- 公開URL：<https://gobblet.giga-school.com/>
 - 先生向けの使い方 → [MANUAL.md](./MANUAL.md)
 - 品質基準への適合状況 → [AUDIT.md](./AUDIT.md)
 
@@ -133,7 +133,7 @@ GitHub Pages の場合、`main` ブランチのルートを公開設定にしま
 * **CSP**: `index.html` / `offline.html` の `<meta http-equiv="Content-Security-Policy">` で、
   自分自身以外からの読み込みと、インラインの script / style を禁止しています。
   この制約があるため、**CSS と JS をインラインに書き戻さないでください。**
-* **Service Worker は他アプリのキャッシュに触れません。** `gigayama.github.io` は
+* **Service Worker は他アプリのキャッシュに触れません。** 旧配信元の `gigayama.github.io` は
   複数のアプリで同一オリジンを共有しているため、`caches.keys()` の結果を
   そのまま削除してはいけません。`CACHE_PREFIX`(`gobblet-`)で始まるものだけを掃除しています。
 * **Service Worker は `localStorage` を操作しません。**
@@ -151,12 +151,14 @@ GitHub Pages の場合、`main` ブランチのルートを公開設定にしま
 
 ## 📲 PWA
 
-* `manifest.webmanifest` の `id` / `start_url` / `scope` は
-  **リポジトリ名の絶対パス `/Gobblet/`** です。
-  `gigayama.github.io` は数十個のアプリが同一オリジンを共有しているため、
-  ここを相対パスやルート(`/`)にすると、別アプリと識別子が衝突して
-  「アイコンを押したら違うアプリが開く」事故が起きます。
-  **このリポジトリをコピーして新しいアプリを作るときは、まずこの3つを書き換えてください。**
+* `manifest.webmanifest` の `id` / `start_url` / `scope` は **`"./"`** です。
+  独自ドメイン `gobblet.giga-school.com` へ移り、アプリはドメイン直下に
+  置かれているためです。`shortcuts` の `url` も同じく相対にします。
+  旧構成（`gigayama.github.io/Gobblet/`）のような**リポジトリ名の絶対パスに
+  戻すと、`scope` がページの URL を含まなくなり、manifest ごと無視されて
+  PWA としてインストールできなくなります。**
+  オリジンがアプリごとに分かれたので、識別子が他アプリと衝突する心配も
+  なくなりました。
 * アイコンは `icon.svg` を正本として生成しています。差し替えるときは
   192 / 512 / maskable 192 / maskable 512 / apple-touch-icon の5枚をまとめて作り直してください。
   maskable は中央80%の安全地帯に収める必要があります(角が丸く切られるため)。

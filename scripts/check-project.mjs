@@ -94,8 +94,20 @@ for (const [id, label, file] of [
     : fail('B1c', 'インライン script / style / on属性 がない',
         [inlineScript && 'inline <script>', inlineStyle && 'inline <style>', onAttr && 'on属性'].filter(Boolean).join(' / '));
 
-  const secretRe = /(AIza[0-9A-Za-z_-]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY|[A-Za-z0-9._%+-]+@(?!example\.)[A-Za-z0-9.-]+\.(?:com|jp|net|org)\b)/;
-  const leaked = files.filter(f => /\.(html|js|mjs|json|css|md|yml)$/.test(f) && f !== 'package-lock.json' && secretRe.test(read(f) ?? ''));
+  // 鍵の直書きはどこにあっても許さない。
+  const keyRe = /(AIza[0-9A-Za-z_-]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY)/;
+  // メールアドレスは「うっかり残した」ものを拾うための検査。
+  // ⚠️ プライバシーポリシーと利用規約は、問い合わせ先を書くことが目的の
+  //    ページであり、連絡先が載っているのが正しい状態。ここまで走査すると
+  //    「正しく書いてあるほど落ちる」ことになるので、この2つは対象から外す。
+  const mailRe = /[A-Za-z0-9._%+-]+@(?!example\.)[A-Za-z0-9.-]+\.(?:com|jp|net|org)\b/;
+  const LEGAL_PAGES = ['privacy.html', 'terms.html'];
+  const leaked = files.filter(f => {
+    if (!/\.(html|js|mjs|json|css|md|yml)$/.test(f) || f === 'package-lock.json') return false;
+    const body = read(f) ?? '';
+    if (keyRe.test(body)) return true;
+    return !LEGAL_PAGES.includes(f) && mailRe.test(body);
+  });
   leaked.length ? fail('B2', '秘密情報・メールアドレスの直書きがない', leaked.join(', ')) : pass('B2', '秘密情報・メールアドレスの直書きがない');
 
   const committed = files.filter(f => /(^|\/)(\.env|\.clasp\.json)$/.test(f));
@@ -210,13 +222,28 @@ for (const [id, label, file] of [
 
 /* ── E. PWA ──────────────────────────────── */
 {
-  const want = `/${cfg.repoName}/`;
+  // 正しい値は「どこで配信するか」で変わる。
+  // CNAME があれば独自ドメインの直下に置かれるので "./"。
+  // 旧構成のようにオリジンを他アプリと共有する配置なら、取り違えを避けるため
+  // リポジトリ名の絶対パスが要る。
+  // ⚠️ 独自ドメインでリポジトリ名の絶対パスに戻すと、scope がページの URL を
+  //    含まなくなり、manifest ごと無視されて PWA としてインストールできなくなる。
+  const want = existsSync(join(ROOT, 'CNAME')) ? './' : `/${cfg.repoName}/`;
   if (!manifest) fail('E1', 'manifest がある');
   else {
     const bad = ['id', 'start_url', 'scope'].filter(k => !String(manifest[k] ?? '').startsWith(want));
     bad.length
       ? fail('E1', `manifest の id/scope/start_url が ${want} 始まり`, bad.map(k => `${k}=${manifest[k]}`).join(', '))
       : pass('E1', `manifest の id/scope/start_url が ${want} 始まり`);
+
+    // shortcuts の url も scope の中でなければならない。
+    // scope の外を指すショートカットはブラウザに捨てられる（メニューに出ない）。
+    const badShortcuts = (manifest.shortcuts ?? [])
+      .map(sc => String(sc.url ?? ''))
+      .filter(u => !u.startsWith(want));
+    badShortcuts.length
+      ? fail('E1b', `shortcuts の url が ${want} 始まり`, badShortcuts.join(', '))
+      : pass('E1b', `shortcuts の url が ${want} 始まり`);
 
     const purposes = (manifest.icons ?? []).map(i => `${i.sizes}:${i.purpose}`);
     const needMaskable = purposes.some(p => p.includes('maskable'));

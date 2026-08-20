@@ -22,6 +22,6 @@
     {"src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}
   ],
   "shortcuts": [
-    {"name": "新しいゲーム", "short_name": "新規ゲーム", "url": "/Gobblet/?source=pwa"}
+    {"name": "新しいゲーム", "short_name": "新規ゲーム", "url": "./?source=pwa"}
   ]
 }
