@@ -94,8 +94,20 @@ for (const [id, label, file] of [
     : fail('B1c', 'インライン script / style / on属性 がない',
         [inlineScript && 'inline <script>', inlineStyle && 'inline <style>', onAttr && 'on属性'].filter(Boolean).join(' / '));
 
-  const secretRe = /(AIza[0-9A-Za-z_-]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY|[A-Za-z0-9._%+-]+@(?!example\.)[A-Za-z0-9.-]+\.(?:com|jp|net|org)\b)/;
-  const leaked = files.filter(f => /\.(html|js|mjs|json|css|md|yml)$/.test(f) && f !== 'package-lock.json' && secretRe.test(read(f) ?? ''));
+  // 鍵の直書きはどこにあっても許さない。
+  const keyRe = /(AIza[0-9A-Za-z_-]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY)/;
+  // メールアドレスは「うっかり残した」ものを拾うための検査。
+  // ⚠️ プライバシーポリシーと利用規約は、問い合わせ先を書くことが目的の
+  //    ページであり、連絡先が載っているのが正しい状態。ここまで走査すると
+  //    「正しく書いてあるほど落ちる」ことになるので、この2つは対象から外す。
+  const mailRe = /[A-Za-z0-9._%+-]+@(?!example\.)[A-Za-z0-9.-]+\.(?:com|jp|net|org)\b/;
+  const LEGAL_PAGES = ['privacy.html', 'terms.html'];
+  const leaked = files.filter(f => {
+    if (!/\.(html|js|mjs|json|css|md|yml)$/.test(f) || f === 'package-lock.json') return false;
+    const body = read(f) ?? '';
+    if (keyRe.test(body)) return true;
+    return !LEGAL_PAGES.includes(f) && mailRe.test(body);
+  });
   leaked.length ? fail('B2', '秘密情報・メールアドレスの直書きがない', leaked.join(', ')) : pass('B2', '秘密情報・メールアドレスの直書きがない');
 
   const committed = files.filter(f => /(^|\/)(\.env|\.clasp\.json)$/.test(f));
