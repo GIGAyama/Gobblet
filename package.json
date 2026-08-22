@@ -11,7 +11,8 @@
     "lint": "echo 'No lint required'",
     "start": "node server.js",
     "test": "node --test \"tests/**/*.test.mjs\"",
-    "check": "node scripts/check-project.mjs"
+    "check": "node tools/build-sw.mjs --check && node scripts/check-project.mjs",
+    "build:sw": "node tools/build-sw.mjs"
   },
   "dependencies": {
     "express": "^4.19.2"

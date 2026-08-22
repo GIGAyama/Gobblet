@@ -1,0 +1,7 @@
+{
+  "//": "配信物はリポジトリ直下。先読み一覧の定数名は PRECACHE_URLS。",
+  "swPath": "sw.js",
+  "baseDir": ".",
+  "versionConst": "APP_VERSION",
+  "shellConst": "PRECACHE_URLS"
+}

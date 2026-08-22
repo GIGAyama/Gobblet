@@ -282,11 +282,22 @@ for (const [id, label, file] of [
   existsSync(join(ROOT, 'offline.html')) ? pass('E8', 'offline.html がある') : fail('E8', 'offline.html がある');
 
   {
-    const v = /APP_VERSION\s*=\s*['"]([^'"]+)['"]/.exec(sw)?.[1];
-    const pkg = JSON.parse(read('package.json') ?? '{}').version;
-    if (!v) fail('E9', 'sw.js に APP_VERSION がある');
-    else if (pkg && v !== pkg) fail('E9', 'APP_VERSION と package.json の version が一致', `sw=${v} / package.json=${pkg}`);
-    else pass('E9', 'APP_VERSION と package.json の version が一致', v);
+    // 以前は「sw.js の APP_VERSION と package.json の version が一致するか」を
+    // 見ていた。ふたつとも手書きなので、いっしょに上げ忘れれば揃ったまま緑になる。
+    // 2026-08-21 に12リポジトリで同時に上げ忘れる事故が起きたのがその形。
+    // いまは tools/build-sw.mjs が先読み対象の中身から版を作るので、
+    // 見るべきは「目印が残っているか」と「生成器が配線されているか」になった。
+    const label = 'APP_VERSION が自動生成されている';
+    const scripts = JSON.parse(read('package.json') ?? '{}').scripts ?? {};
+    if (!/const APP_VERSION = '[^']*'; \/\* __APP_VERSION__ \*\//.test(sw)) {
+      fail('E9', label, "手書きに戻っている。const APP_VERSION = 'v0'; /* __APP_VERSION__ */ の形にすること");
+    } else if (!existsSync(join(ROOT, 'tools/build-sw.mjs'))) {
+      fail('E9', label, 'tools/build-sw.mjs がありません。版の自動生成が外れています');
+    } else if (!Object.values(scripts).some((c) => /build-sw\.mjs/.test(c))) {
+      fail('E9', label, 'package.json が tools/build-sw.mjs を呼んでいません。版が据え置きのまま配られます');
+    } else {
+      pass('E9', label, /APP_VERSION\s*=\s*'([^']+)'/.exec(sw)?.[1]);
+    }
   }
 
   // プリキャッシュの取りこぼし（存在しないファイルを並べていないか）
