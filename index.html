@@ -77,7 +77,17 @@
     </section>
   </main>
 
-  <footer>© 2026 パクパクゴブレット GIGA<ruby>山<rp>（</rp><rt>やま</rt><rp>）</rp></ruby><br><small>ボードゲーム「ゴブレット・ゴブラーズ」（Blue Orange Games／すごろくや）のルールをもとにした<ruby>非公式<rp>（</rp><rt>ひこうしき</rt><rp>）</rp></ruby>アプリです。<ruby>権利者<rp>（</rp><rt>けんりしゃ</rt><rp>）</rp></ruby>とは<ruby>関係<rp>（</rp><rt>かんけい</rt><rp>）</rp></ruby>ありません。</small><br><small><a href="https://giga-school.com/apps/gobblet/" target="_blank" rel="noopener"><ruby>使<rp>（</rp><rt>つか</rt><rp>）</rp></ruby>い<ruby>方<rp>（</rp><rt>かた</rt><rp>）</rp></ruby>を<ruby>読<rp>（</rp><rt>よ</rt><rp>）</rp></ruby>む</a></small></footer>
+  <footer>© 2026 パクパクゴブレット GIGA<ruby>山<rp>（</rp><rt>やま</rt><rp>）</rp></ruby><br><small>ボードゲーム「ゴブレット・ゴブラーズ」（Blue Orange Games／すごろくや）のルールをもとにした<ruby>非公式<rp>（</rp><rt>ひこうしき</rt><rp>）</rp></ruby>アプリです。<ruby>権利者<rp>（</rp><rt>けんりしゃ</rt><rp>）</rp></ruby>とは<ruby>関係<rp>（</rp><rt>かんけい</rt><rp>）</rp></ruby>ありません。</small></small>
+    <!-- ⚠️ 行き先のリンクを手で書かないこと。中身は正本の部品
+         standards/web/giga-app-links.js（配布物 web/giga-app-links.js）が
+         この中に出す。文言も並びも行き先も、あちらで決まっている。
+         ここに手で書くと、次に文言が変わったときに 42 本ぶんの直し忘れが起きる。
+
+         ⚠️ data-links で「つかいかた」を外してある。このアプリにはまだ
+            docs/manual/ が無く、既定のまま出すと行き止まりのリンクになる。
+            マニュアルを書いたら、この属性ごと消すこと（既定は 3 つとも出る）。 -->
+    <div data-giga-links data-links="terms,privacy"></div>
+  </footer>
 
   <dialog id="rules-dialog">
     <div class="dialog-body">
@@ -110,6 +120,7 @@
     <button id="update-apply" class="btn" type="button">さいしんに する</button>
   </div>
 
+  <script src="./web/giga-app-links.js" defer></script>
   <script src="./js/rules.js"></script>
   <script src="./js/furigana.js"></script>
   <script src="./js/app.js"></script>
