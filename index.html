@@ -77,16 +77,27 @@
     </section>
   </main>
 
-  <footer>© 2026 パクパクゴブレット GIGA<ruby>山<rp>（</rp><rt>やま</rt><rp>）</rp></ruby><br><small>ボードゲーム「ゴブレット・ゴブラーズ」（Blue Orange Games／すごろくや）のルールをもとにした<ruby>非公式<rp>（</rp><rt>ひこうしき</rt><rp>）</rp></ruby>アプリです。<ruby>権利者<rp>（</rp><rt>けんりしゃ</rt><rp>）</rp></ruby>とは<ruby>関係<rp>（</rp><rt>かんけい</rt><rp>）</rp></ruby>ありません。</small></small>
-    <!-- ⚠️ 行き先のリンクを手で書かないこと。中身は正本の部品
-         standards/web/giga-app-links.js（配布物 web/giga-app-links.js）が
-         この中に出す。文言も並びも行き先も、あちらで決まっている。
-         ここに手で書くと、次に文言が変わったときに 42 本ぶんの直し忘れが起きる。
+  <footer>
+    <!-- ⚠️ クレジットと行き先のリンクは 1 行に収める（.foot__line）。
+         もとは <br> で改行していたので、リンクが権利表示の下にもう 1 行
+         増えて、そのぶん盤の場所が狭くなっていた。 -->
+    <span class="foot__line">
+      <span class="foot__c">© 2026 パクパクゴブレット GIGA<ruby>山<rp>（</rp><rt>やま</rt><rp>）</rp></ruby></span>
+      <!-- ⚠️ 行き先のリンクを手で書かないこと。中身は正本の部品
+           standards/web/giga-app-links.js（配布物 web/giga-app-links.js）が
+           この中に出す。文言も並びも行き先も、あちらで決まっている。
+           ここに手で書くと、次に文言が変わったときに 42 本ぶんの直し忘れが起きる。
 
-         ⚠️ data-links で「つかいかた」を外してある。このアプリにはまだ
-            docs/manual/ が無く、既定のまま出すと行き止まりのリンクになる。
-            マニュアルを書いたら、この属性ごと消すこと（既定は 3 つとも出る）。 -->
-    <div data-giga-links data-links="terms,privacy"></div>
+           ⚠️ <div> にしないこと。そこで改行が入って 1 行に収まらなくなる。
+
+           ⚠️ data-links で「つかいかた」を外してある。このアプリにはまだ
+              docs/manual/ が無く、既定のまま出すと行き止まりのリンクになる。
+              マニュアルを書いたら、この属性ごと消すこと（既定は 3 つとも出る）。 -->
+      <span data-giga-links data-links="terms,privacy"></span>
+    </span>
+    <!-- 権利表示。消せないので 2 行目に残す。
+         ⚠️ もとは </small> が 1 つ多く、開きタグと数が合っていなかった。 -->
+    <small class="foot__note">ボードゲーム「ゴブレット・ゴブラーズ」（Blue Orange Games／すごろくや）のルールをもとにした<ruby>非公式<rp>（</rp><rt>ひこうしき</rt><rp>）</rp></ruby>アプリです。<ruby>権利者<rp>（</rp><rt>けんりしゃ</rt><rp>）</rp></ruby>とは<ruby>関係<rp>（</rp><rt>かんけい</rt><rp>）</rp></ruby>ありません。</small>
   </footer>
 
   <dialog id="rules-dialog">

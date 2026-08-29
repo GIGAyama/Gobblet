@@ -358,7 +358,24 @@ footer {
   font-size: .68rem;
   line-height: 1.4;
   color: #795548;
+  min-width: 0;
 }
+/* ⚠️ クレジットと行き先のリンクを 1 行に収める。ここを折り返させると、
+   そのぶん盤の場所が狭くなる。flex-wrap: nowrap と min-width: 0 の 2 つが
+   要る。nowrap だけだと、文字列が縮まずに列を押し広げて横スクロールになる。
+   権利表示（.foot__note）は消せないので 2 行目に残す。 */
+/* ⚠️ min-width: 0 と max-inline-size: 100% の 2 つを外さないこと。
+   この画面は body 全体が 1 列のグリッドで、列の幅は中身のいちばん広いものに
+   合わせて決まる。折り返さない行をここに置くと、その最小幅が列ごと押し広げ、
+   **盤のほうが 320px の端末で横にはみ出す**。2026-08-29 に実測した
+   （フッターを細くしたら、そのぶん盤が伸びて 3px はみ出した）。 */
+.foot__line {
+  display: flex; flex-wrap: nowrap; align-items: center;
+  justify-content: center; gap: .2em;
+  min-width: 0; max-inline-size: 100%;
+}
+.foot__c { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.foot__note { display: block; }
 
 dialog {
   border: 0;

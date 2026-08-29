@@ -15,7 +15,7 @@ const CACHE_PREFIX = 'gobblet-';
 //    手書きだったころは上げるのが人の仕事で、2026-08-21 に12リポジトリで同時に
 //    上げ忘れる事故が起きた。上げ忘れると古いシェルのキャッシュが掃除されず、
 //    直した画面が端末に届かない。
-const APP_VERSION = 've34a859a'; /* __APP_VERSION__ */
+const APP_VERSION = 'vc410217b'; /* __APP_VERSION__ */
 const CACHE_STATIC = CACHE_PREFIX + 'static-' + APP_VERSION;
 const CACHE_RUNTIME = CACHE_PREFIX + 'runtime-v1';
 
