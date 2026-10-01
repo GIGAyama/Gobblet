@@ -15,6 +15,6 @@
     "build:sw": "node tools/build-sw.mjs"
   },
   "dependencies": {
-    "express": "^4.19.2"
+    "express": "^4.22.3"
   }
 }
